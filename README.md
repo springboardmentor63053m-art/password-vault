@@ -7,18 +7,19 @@
 ![Redis](https://img.shields.io/badge/Redis-7--alpine-DC382D?logo=redis&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![pgAdmin](https://img.shields.io/badge/pgAdmin-4-336791?logo=postgresql&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Milestone%201%20Completed-brightgreen)
+![Status](https://img.shields.io/badge/Status-Auth%20APIs%20Added-brightgreen)
 
 ---
 
 ## 📌 Project Overview (Completed Work)
 
-This repository currently implements **Milestone 1: Project Initialization, System Architecture & Database Foundation**:
+This repository implements **Milestone 1: Project Initialization, System Architecture & Database Foundation**, plus registration and login APIs for Milestone 2:
 
 * **Normalized Relational Schema (`database/schema.sql`)**: 20 tables covering authentication, PBKDF2/AES cryptographic metadata, vaults, secure credential sharing, security event logging, notifications, and analytics.
 * **Automated Containerized Infrastructure (`docker-compose.yml`)**: Preconfigured, one-command deployment of **PostgreSQL 16**, **Redis 7** (caching layer), and **pgAdmin 4** (web management GUI).
 * **Automated Database Bootstrapping**: Mounts the schema script directly into PostgreSQL’s initialization hook for zero-config table generation.
 * **Pre-populated Seed Data**: Initialized system roles and default credential categories aligned with project specifications.
+* **Authentication Microservices**: Independent Java 17 / Spring Boot services for account registration and login, backed by the existing PostgreSQL schema.
 
 ---
 
@@ -261,6 +262,8 @@ The services are managed via `docker-compose.yml`:
 | **PostgreSQL** | `securevault-postgres` | `postgres:16-alpine` | `5432:5432` | DB: `securevault_db`<br>User: `postgres`<br>Password: `postgrespassword` |
 | **Redis** | `securevault-redis` | `redis:7-alpine` | `6379:6379` | Default Redis cache port |
 | **pgAdmin** | `securevault-pgadmin` | `dpage/pgadmin4:latest` | `5050:80` | Web Login: `admin@securevault.com`<br>Password: `admin` |
+| **Registration API** | `securevault-registration-service` | Built from `auth-services/registration-service` | `8081:8081` | `POST /api/registration/register` |
+| **Login API** | `securevault-login-service` | Built from `auth-services/login-service` | `8082:8082` | `POST /api/login` |
 
 ---
 
@@ -281,18 +284,28 @@ cd Infosys-Springboard-Java-Team3
 ---
 
 ### Step 2: Start Containers with Docker Compose
-Ensure Docker Desktop is open and run:
-```bash
-docker compose up -d
+Set a fresh JWT signing key in your shell before starting. Missing keys and the former public development key are rejected. Generate a key in PowerShell:
+
+```powershell
+$keyBytes = New-Object byte[] 48
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($keyBytes)
+$rng.Dispose()
+$env:JWT_SECRET_BASE64 = [Convert]::ToBase64String($keyBytes)
 ```
-> **Note:** On first startup, Docker will pull the images and automatically execute `database/schema.sql`, creating all 20 tables and seeding default data.
+
+Keep the key stable across restarts using your deployment secret manager; changing it invalidates existing JWT signatures. Do not commit it. Ensure Docker Desktop is open and run:
+```bash
+docker compose up --build -d
+```
+> **Note:** On first startup, Docker will pull the base images, build both Java services, and execute `database/schema.sql` to create the tables and seed default data. The APIs wait for PostgreSQL to become healthy.
 
 ---
 
 ### Step 3: Verify Running Services
-Check that all three containers are healthy:
+Check that the containers are running:
 ```bash
-docker ps
+docker compose ps
 ```
 
 To verify the tables directly inside PostgreSQL:
@@ -302,7 +315,62 @@ docker exec -it securevault-postgres psql -U postgres -d securevault_db -c "\dt"
 
 ---
 
-### Step 4: Access pgAdmin (Web GUI)
+### Step 4: Test Registration and Login with Thunder Client
+
+Use Thunder Client's **New Request** view and send JSON requests with `Content-Type: application/json`.
+
+**Register a user**
+
+- Method: `POST`
+- URL: `http://localhost:8081/api/registration/register`
+- Body:
+
+```json
+{
+    "username": "vaultuser",
+    "email": "vaultuser@example.com",
+    "password": "Password123!"
+}
+```
+
+Expected: `202 Accepted` with the same generic acknowledgement for new and duplicate accounts. No account identifiers are returned. Passwords are stored as BCrypt hashes.
+
+**Log in**
+
+- Method: `POST`
+- URL: `http://localhost:8082/api/login`
+- Body:
+
+```json
+{
+    "identifier": "vaultuser@example.com",
+    "password": "Password123!"
+}
+```
+
+`identifier` accepts either the registered username or email. Expected: `200 OK` with a 15-minute JWT access token and user summary. A SHA-256 fingerprint of each login token is recorded in the `sessions` table, rather than the bearer token itself. Five consecutive failed passwords lock the account for 15 minutes; a successful login clears the counter.
+
+Invalid registration input returns `400 Bad Request`. Invalid, inactive, locked, and MFA-enabled logins return the same `401 Unauthorized` response. Nonexistent accounts receive a dummy BCrypt check to reduce timing differences. Expired lockouts start a fresh failure count. MFA-enabled accounts cannot sign in until a second-factor verification flow is implemented; no password-only token is issued.
+
+Both services return `Cache-Control: no-store`. Each process limits login to 30 requests per minute per caller address, registration to 10, with at most eight authentication requests in progress per service. There is no global per-minute quota that one client can exhaust for everyone. Excess requests return `429` with `Retry-After: 60`. Limits reset on process restart and are not shared across replicas. Behind a reverse proxy, callers share the proxy address limit; configure a shared gateway limiter for production rather than trusting arbitrary forwarding headers. Account lockout can still be deliberately triggered by attackers; throttling reduces this risk but does not eliminate distributed attacks.
+
+Compose binds the auth ports to `127.0.0.1` for local testing. Remote access requires an HTTPS reverse proxy with direct HTTP ports blocked. Localhost binding does not itself provide TLS; do not expose these services directly over HTTP.
+
+Database configuration and schema were intentionally left unchanged. Before remote deployment, rotate the committed PostgreSQL and pgAdmin credentials, restrict their published ports, and replace the auth services' PostgreSQL superuser access with least-privilege database roles. Redis also has a published unauthenticated port. The existing `mfa_enabled`, lockout, and session columns support these auth fixes without a schema migration. The query using `lower(username)` / `lower(email)` would benefit from matching functional indexes as the users table grows. Existing case-sensitive unique constraints do not prevent case-variant accounts inserted outside registration; consider case-insensitive uniqueness after checking existing data.
+
+Passwords must fit within BCrypt's 72-byte UTF-8 limit, in addition to the character limits. Requests over 8 KiB return `413` even with chunked encoding; invalid JSON and validation errors receive generic `400` responses without rejected passwords. Slow body uploads receive `408`; the elapsed-time guard works alongside the connector read timeout. Credential request records and token responses redact diagnostic string output, and Spring web logging defaults to INFO to avoid rejected-value debug logs. Multipart uploads are disabled. JWT lifetimes must be between 1 and 3600 seconds (default 900).
+
+Auth services use Spring Boot 4.0.8, Tomcat 11.0.27, and Java 17; login uses JJWT 0.12.7. These upgrades replace the original Tomcat version affected by resource-exhaustion advisories ([Tomcat advisories](https://tomcat.apache.org/security-10.html), [Boot 4 migration guide](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide)). Containers run as UID/GID 10001 with a read-only filesystem, dropped capabilities, no privilege escalation, and writable temporary storage. Docker builds run regression tests. Direct Java launches bind to localhost by default; Compose sets the internal container bind address while keeping host ports on localhost.
+
+`.gitignore` and service `.dockerignore` files exclude environment secrets, private keys, and build output. They do not remove secrets already committed in Git history; rotate exposed secrets rather than relying on ignore rules.
+
+Run regression tests with `mvn test` from each auth service directory (Java 17 and Maven required). JWT issuance and the JSON endpoints are implemented here; protected vault APIs, JWT consumption/revocation enforcement, and complete MFA verification are future work, so they cannot be certified by this review.
+
+The login service health endpoint is `GET http://localhost:8082/api/login/health`.
+
+---
+
+### Step 5: Access pgAdmin (Web GUI)
 1. Open your browser and navigate to: **`http://localhost:5050`**
 2. Sign in with:
    * **Email:** `admin@securevault.com`
@@ -327,6 +395,9 @@ docker exec -it securevault-postgres psql -U postgres -d securevault_db -c "\dt"
 Infosys-Springboard-Java-Team3/
 ├── database/
 │   └── schema.sql        # PostgreSQL DDL with extensions, tables, indexes, and seed data
+├── auth-services/
+│   ├── registration-service/  # Registration API (port 8081)
+│   └── login-service/         # Login/JWT API (port 8082)
 ├── docker-compose.yml     # Multi-container orchestration (PostgreSQL, Redis, pgAdmin)
 ├── schema.md              # Detailed schema design documentation & ER diagram
 ├── README.md              # Project setup, execution guide, and architecture
@@ -364,7 +435,7 @@ docker compose down
 ## 🗺️ Roadmap & Next Steps
 
 - [x] **Milestone 1:** Database Schema Design, Normalization & Docker Setup
-- [ ] **Milestone 2:** Spring Boot Backend Initialization (Spring Security + JWT + Spring Data JPA)
+- [x] **Milestone 2:** Spring Boot registration and login microservices (BCrypt + JWT + PostgreSQL)
 - [ ] **Milestone 3:** Encryption Service (AES-256-GCM + PBKDF2 Key Derivation) & Credential CRUD APIs
 - [ ] **Milestone 4:** Secure Sharing Service & Audit Logging Interceptors
 - [ ] **Milestone 5:** React.js Frontend Integration & Dashboards
