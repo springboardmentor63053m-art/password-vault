@@ -1,0 +1,15 @@
+# Local secrets and private key material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+
+# Build output and local tooling
+**/target/
+.tools/
+.m2/
+*.log
