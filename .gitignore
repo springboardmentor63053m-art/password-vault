@@ -1,39 +1,23 @@
-# Dependencies
-node_modules/
-**/node_modules/
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
 /.pnp
 .pnp.js
 
-# Production builds
-dist/
-**/dist/
-/build
-
-# Testing & Coverage
+# testing
 /coverage
 
-# Environment & Local secrets
+# production
+/build
+
+# misc
 .DS_Store
-.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-*.log
-
-# Maven & Java
-target/
-**/target/
-*.class
-
-# Vite & IDE Cache
-.vite/
-**/.vite/
-.idea/
-*.iml
-.vscode/
