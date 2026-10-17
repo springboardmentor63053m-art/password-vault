@@ -19,9 +19,10 @@ services:
       timeout: 5s
       retries: 5
 
-  registration-service:
-    build: ./auth-services/registration-service
-    container_name: securevault-registration-service
+  # Unified Spring Boot Backend Service (Auth, Registration, Login & Vault)
+  backend:
+    build: ./backend
+    container_name: securevault-backend
     restart: unless-stopped
     read_only: true
     cap_drop:
@@ -35,32 +36,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/securevault_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgrespassword
-    ports:
-      - "127.0.0.1:8081:8081"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  login-service:
-    build: ./auth-services/login-service
-    container_name: securevault-login-service
-    restart: unless-stopped
-    read_only: true
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /tmp:size=64m,mode=1777
-    environment:
-      SERVER_ADDRESS: 0.0.0.0
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/securevault_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgrespassword
-      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:?Set JWT_SECRET_BASE64 to a random base64-encoded signing key}
+      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:-c2VjdXJldmF1bHQtdGVhbTMtZGV2ZWxvcG1lbnQta2V5LWNoYW5nZS1tZS00OC1ieXRlcy1zZWNyZXQh}
       JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-900}
     ports:
-      - "127.0.0.1:8082:8082"
+      - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
