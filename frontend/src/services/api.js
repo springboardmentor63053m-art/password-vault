@@ -1,8 +1,6 @@
 /**
  * SecureVault API Client Service
- * Interacts with Spring Boot Microservices:
- * - Registration Service (Port 8081 / /api/registration)
- * - Login Service (Port 8082 / /api/login)
+ * Interacts with the Spring Boot API through the Vite /api proxy.
  */
 
 export const registerUser = async ({ username, email, password }) => {
@@ -31,14 +29,8 @@ export const registerUser = async ({ username, email, password }) => {
       status: response.status,
       message: data.message || 'Registration request accepted. You can now log in.',
     };
-  } catch (err) {
-    console.warn('Backend API connection warning (running local demo fallback):', err);
-    // Offline / Demo fallback
-    return {
-      success: true,
-      isDemo: true,
-      message: 'Demo Mode: Registration simulated successfully! You can proceed to Login.',
-    };
+  } catch {
+    return { success: false, error: 'Cannot reach SecureVault. Check that the backend is running and try again.' };
   }
 };
 
@@ -70,37 +62,22 @@ export const loginUser = async ({ identifier, password }) => {
     }
 
     // Store JWT securely in sessionStorage
-    const jwtToken = data.accessToken || data.token;
-    if (jwtToken) {
-      sessionStorage.setItem('securevault_jwt', jwtToken);
-      sessionStorage.setItem('securevault_user', JSON.stringify(data.user || { identifier }));
+    if (!data.accessToken || !data.user || !data.user.role) {
+      return { success: false, error: 'The server returned an incomplete authentication response.' };
     }
+    sessionStorage.setItem('securevault_jwt', data.accessToken);
+    sessionStorage.setItem('securevault_user', JSON.stringify(data.user));
 
     return {
       success: true,
       data,
     };
-  } catch (err) {
-    console.warn('Backend API connection warning (running local demo fallback):', err);
-    // Offline / Demo fallback
-    const mockUser = {
-      username: identifier.split('@')[0] || 'vaultuser',
-      email: identifier.includes('@') ? identifier : `${identifier}@example.com`,
-      id: 'demo-uuid-' + Math.random().toString(36).substring(2, 9),
-    };
-    sessionStorage.setItem('securevault_jwt', 'demo_jwt_token_sample');
-    sessionStorage.setItem('securevault_user', JSON.stringify(mockUser));
-    return {
-      success: true,
-      isDemo: true,
-      data: {
-        token: 'demo_jwt_token_sample',
-        tokenType: 'Bearer',
-        user: mockUser,
-      },
-    };
+  } catch {
+    return { success: false, error: 'Cannot reach SecureVault. Check that the backend is running and try again.' };
   }
 };
+
+export const getStoredToken = () => sessionStorage.getItem('securevault_jwt');
 
 export const getStoredAuth = () => {
   try {

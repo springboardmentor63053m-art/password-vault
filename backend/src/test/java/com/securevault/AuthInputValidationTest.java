@@ -69,7 +69,7 @@ class AuthInputValidationTest {
     void acceptsExactly72Utf8BytesAndSerializesTheTokenAndExpiry() throws Exception {
         String password = "\u00e9".repeat(36);
         Instant expiresAt = Instant.parse("2026-10-15T12:00:00Z");
-        var user = new AuthController.UserResponse(UUID.randomUUID(), "alice", "alice@example.com");
+        var user = new AuthController.UserResponse(UUID.randomUUID(), "alice", "alice@example.com", "ROLE_USER");
         var response = new AuthController.LoginResponse("test-access-token", "Bearer", expiresAt, user);
         when(loginService.authenticate(eq("alice"), eq(password), anyString(), nullable(String.class)))
                 .thenReturn(new LoginService.AuthenticationResult(true, HttpStatus.OK, null, null, response));
@@ -79,6 +79,7 @@ class AuthInputValidationTest {
                         .content(request(password)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").value("test-access-token"))
+                .andExpect(jsonPath("$.user.role").value("ROLE_USER"))
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.expiresAt").value(expiresAt.toString()))
                 .andExpect(content().string(not(containsString(password))));

@@ -39,6 +39,8 @@ class LoginServiceTest {
             RowMapper<?> mapper = invocation.getArgument(1);
             return List.of(mapper.mapRow(row, 0));
         });
+        when(jdbc.queryForList(anyString(), eq(String.class), any(Object[].class)))
+                .thenReturn(List.of("ROLE_USER"));
     }
 
     @Test
@@ -56,8 +58,10 @@ class LoginServiceTest {
         when(row.getObject("locked_until", OffsetDateTime.class)).thenReturn(OffsetDateTime.now().minusMinutes(1));
         assertEquals(401, service.authenticate("alice", "wrong-password", "127.0.0.1", "test").status().value());
         verify(jdbc).update(
-                "UPDATE users SET failed_login_attempts = ?, locked_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                1, userId);
+                contains("UPDATE users SET failed_login_attempts = ?"),
+                eq(1),
+                isNull(),
+                eq(userId));
     }
 
     @Test
@@ -74,6 +78,7 @@ class LoginServiceTest {
         assertTrue(result.authenticated());
         assertNotNull(result.response());
         assertEquals("Bearer", result.response().tokenType());
+        assertEquals("ROLE_USER", result.response().user().role());
         verify(jdbc).update(
                 "UPDATE users SET failed_login_attempts = 0, locked_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 userId);

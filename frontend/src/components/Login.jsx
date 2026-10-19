@@ -23,12 +23,10 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
     setLoading(false);
 
     if (result.success) {
-      const user = result.data.user || { username: identifier.split('@')[0], email: identifier };
+      const user = result.data.user;
       setStatusMessage({
         type: 'success',
-        text: result.isDemo
-          ? 'Demo Mode: Authentication successful! Welcome to SecureVault.'
-          : 'Login successful! Redirecting to vault...',
+        text: 'Login successful! Redirecting to your dashboard...',
       });
       setTimeout(() => {
         onLoginSuccess(user);
@@ -44,7 +42,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
   const handleOAuthDemo = (provider) => {
     setStatusMessage({
       type: 'info',
-      text: `${provider} OAuth integration configured for Milestone 4 & 5.`,
+      text: `${provider} sign-in is not configured yet. Use your SecureVault account.`,
     });
   };
 

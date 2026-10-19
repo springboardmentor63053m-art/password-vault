@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"}, allowedHeaders = {"Content-Type", "Authorization"}, methods = {org.springframework.web.bind.annotation.RequestMethod.GET, org.springframework.web.bind.annotation.RequestMethod.POST, org.springframework.web.bind.annotation.RequestMethod.OPTIONS})
 @Validated
 @RestController
 @RequestMapping("/api")
@@ -98,7 +98,11 @@ public class AuthController {
         public String toString() { return "LoginResponse[redacted]"; }
     }
 
-    public record UserResponse(UUID id, String username, String email) {}
+   public record UserResponse(
+        UUID id,
+        String username,
+        String email,
+        String role) {}
 
     public record ApiError(String code, String message, Instant timestamp) {}
 

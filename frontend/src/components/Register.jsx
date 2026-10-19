@@ -232,12 +232,16 @@ export default function Register({ onRegisterSuccess, onNavigateLogin }) {
                     value={formData.role}
                     onChange={handleChange}
                     className="select-input"
+                    aria-describedby="reg-role-help"
                   >
                     <option value="ROLE_USER">Individual Vault User (ROLE_USER)</option>
-                    <option value="ROLE_TEAM_MEMBER">Team Collaborator (ROLE_TEAM_MEMBER)</option>
-                    <option value="ROLE_ADMIN">Vault Administrator (ROLE_ADMIN)</option>
+                    <option value="ROLE_TEAM_MEMBER">Team Member (ROLE_TEAM_MEMBER)</option>
+                    <option value="ROLE_ADMIN">Administrator (ROLE_ADMIN)</option>
                   </select>
                 </div>
+                <span id="reg-role-help" className="field-error" style={{ color: 'var(--text-muted)' }}>
+                  Public registration always creates ROLE_USER. An authorized administrator must assign team or administrator roles separately.
+                </span>
               </div>
 
               <div className="input-field-group">

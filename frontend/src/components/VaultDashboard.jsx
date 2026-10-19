@@ -1,57 +1,40 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { getStoredToken } from '../services/api';
 
-const INITIAL_VAULT_ITEMS = [
-  {
-    id: '1',
-    title: 'GitHub Enterprise',
-    category: 'API Keys',
-    username: 'octocat_dev',
-    website: 'https://github.com',
-    secret: 'ghp_984j10aKlmnOP901ZqX',
-    strength: 'Strong',
-    lastUpdated: '2 hours ago',
-  },
-  {
-    id: '2',
-    title: 'AWS Production Console',
-    category: 'Website Login',
-    username: 'cloudadmin@securevault.io',
-    website: 'https://aws.amazon.com',
-    secret: 'K9#vL2$pQ8*wE5!m',
-    strength: 'Very Strong',
-    lastUpdated: 'Yesterday',
-  },
-  {
-    id: '3',
-    title: 'Chase Business Banking',
-    category: 'Banking Credentials',
-    username: 'corp_treasury',
-    website: 'https://chase.com',
-    secret: 'Tr3@sury!2026#Vault',
-    strength: 'Very Strong',
-    lastUpdated: '3 days ago',
-  },
-  {
-    id: '4',
-    title: 'PostgreSQL Database Master',
-    category: 'Application Accounts',
-    username: 'postgres',
-    website: 'localhost:5432',
-    secret: 'postgrespassword',
-    strength: 'Medium',
-    lastUpdated: 'Just now',
-  },
-  {
-    id: '5',
-    title: 'Slack Workspace Token',
-    category: 'API Keys',
-    username: 'bot_integration',
-    website: 'https://slack.com',
-    secret: 'xoxb-89104-129031-v9aL0',
-    strength: 'Strong',
-    lastUpdated: '1 week ago',
-  },
-];
+const createGeneratedPassword = (length, includeUpper, includeNumbers, includeSymbols) => {
+  const lowers = 'abcdefghijklmnopqrstuvwxyz';
+  const uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const nums = '0123456789';
+  const syms = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  let chars = lowers;
+  if (includeUpper) chars += uppers;
+  if (includeNumbers) chars += nums;
+  if (includeSymbols) chars += syms;
+  let result = '';
+  const values = new Uint32Array(length);
+  window.crypto.getRandomValues(values);
+  for (let index = 0; index < length; index += 1) result += chars[values[index] % chars.length];
+  return result;
+};
+
+const makeVaultRequest = async (path, options = {}, onLogout) => {
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${getStoredToken() || ''}`,
+      ...(options.headers || {}),
+    },
+  });
+  if (response.status === 401 || response.status === 403) {
+    onLogout?.();
+    throw new Error('Your session has expired. Please sign in again.');
+  }
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || 'The vault request could not be completed.');
+  }
+  return response;
+};
 
 const CATEGORIES = [
   'All',
@@ -64,10 +47,13 @@ const CATEGORIES = [
 ];
 
 export default function VaultDashboard({ currentUser, onLogout }) {
-  const [items, setItems] = useState(INITIAL_VAULT_ITEMS);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [revealedIds, setRevealedIds] = useState({});
+  const [revealedSecrets, setRevealedSecrets] = useState({});
   const [copiedField, setCopiedField] = useState(null);
 
   // Password Generator State
@@ -75,10 +61,11 @@ export default function VaultDashboard({ currentUser, onLogout }) {
   const [includeUpper, setIncludeUpper] = useState(true);
   const [includeNumbers, setIncludeNumbers] = useState(true);
   const [includeSymbols, setIncludeSymbols] = useState(true);
-  const [generatedPassword, setGeneratedPassword] = useState('v8#Kq2$L9@pM5!zR');
+  const [generatedPassword, setGeneratedPassword] = useState('');
 
   // New Item Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [newItem, setNewItem] = useState({
     title: '',
     category: 'Website Login',
@@ -86,50 +73,131 @@ export default function VaultDashboard({ currentUser, onLogout }) {
     website: '',
     secret: '',
   });
-
-  const toggleReveal = (id) => {
-    setRevealedIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingId(null);
+    setNewItem({ title: '', category: 'Website Login', username: '', website: '', secret: '' });
   };
 
-  const copyToClipboard = (text, fieldName) => {
-    navigator.clipboard.writeText(text);
+  const refreshItems = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await makeVaultRequest('/api/vault/credentials', {}, onLogout);
+      setItems(await response.json());
+    } catch (requestError) {
+      setError(requestError.message || 'Could not load your vault. Try refreshing.');
+    } finally {
+      setLoading(false);
+    }
+  }, [onLogout]);
+
+  useEffect(() => {
+    refreshItems();
+  }, [refreshItems]);
+
+  useEffect(() => {
+    setGeneratedPassword(createGeneratedPassword(16, true, true, true));
+  }, []);
+
+  const toggleReveal = async (item) => {
+    if (revealedSecrets[item.id] !== undefined) {
+      setRevealedSecrets((previous) => {
+        const next = { ...previous };
+        delete next[item.id];
+        return next;
+      });
+      return;
+    }
+    try {
+      const response = await makeVaultRequest(`/api/vault/credentials/${encodeURIComponent(item.id)}`, {}, onLogout);
+      const detail = await response.json();
+      setRevealedSecrets((previous) => ({ ...previous, [item.id]: detail.secret }));
+    } catch (requestError) {
+      setError(requestError.message || 'Could not reveal this credential.');
+    }
+  };
+
+  const copyToClipboard = async (text, fieldName) => {
+    await navigator.clipboard.writeText(text);
     setCopiedField(fieldName);
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const generatePassword = () => {
-    const lowers = 'abcdefghijklmnopqrstuvwxyz';
-    const uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const nums = '0123456789';
-    const syms = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-    let chars = lowers;
-    if (includeUpper) chars += uppers;
-    if (includeNumbers) chars += nums;
-    if (includeSymbols) chars += syms;
-
-    let res = '';
-    const array = new Uint32Array(genLength);
-    window.crypto.getRandomValues(array);
-    for (let i = 0; i < genLength; i++) {
-      res += chars[array[i] % chars.length];
-    }
-    setGeneratedPassword(res);
+  const generatePassword = (length = genLength, upper = includeUpper, numbers = includeNumbers, symbols = includeSymbols) => {
+    setGeneratedPassword(createGeneratedPassword(length, upper, numbers, symbols));
   };
 
-  const handleAddItem = (e) => {
+  const handleSaveItem = async (e) => {
     e.preventDefault();
     if (!newItem.title || !newItem.secret) return;
+    setSaving(true);
+    setError('');
+    try {
+      const response = await makeVaultRequest(
+        editingId ? `/api/vault/credentials/${encodeURIComponent(editingId)}` : '/api/vault/credentials',
+        {
+          method: editingId ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newItem),
+        },
+        onLogout,
+      );
+      await response.json();
+      setIsModalOpen(false);
+      setEditingId(null);
+      setNewItem({ title: '', category: 'Website Login', username: '', website: '', secret: '' });
+      await refreshItems();
+    } catch (requestError) {
+      setError(requestError.message || 'Could not save this credential.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-    const item = {
-      id: Date.now().toString(),
-      ...newItem,
-      strength: 'Strong',
-      lastUpdated: 'Just now',
-    };
-    setItems([item, ...items]);
-    setIsModalOpen(false);
-    setNewItem({ title: '', category: 'Website Login', username: '', website: '', secret: '' });
+  const editItem = async (item) => {
+    setError('');
+    try {
+      const response = await makeVaultRequest(`/api/vault/credentials/${encodeURIComponent(item.id)}`, {}, onLogout);
+      const detail = await response.json();
+      setEditingId(item.id);
+      setNewItem({
+        title: detail.title,
+        category: detail.category,
+        username: detail.username,
+        website: detail.website || '',
+        secret: detail.secret,
+      });
+      setIsModalOpen(true);
+    } catch (requestError) {
+      setError(requestError.message || 'Could not open this credential.');
+    }
+  };
+
+  const deleteItem = async (item) => {
+    if (!window.confirm(`Delete ${item.title}?`)) return;
+    setError('');
+    try {
+      await makeVaultRequest(`/api/vault/credentials/${encodeURIComponent(item.id)}`, { method: 'DELETE' }, onLogout);
+      setRevealedSecrets((previous) => {
+        const next = { ...previous };
+        delete next[item.id];
+        return next;
+      });
+      await refreshItems();
+    } catch (requestError) {
+      setError(requestError.message || 'Could not delete this credential.');
+    }
+  };
+
+  const copySecret = async (item) => {
+    try {
+      const response = await makeVaultRequest(`/api/vault/credentials/${encodeURIComponent(item.id)}`, {}, onLogout);
+      const detail = await response.json();
+      await copyToClipboard(detail.secret, `${item.title} secret`);
+    } catch (requestError) {
+      setError(requestError.message || 'Could not copy this credential.');
+    }
   };
 
   const filteredItems = items.filter((item) => {
@@ -137,7 +205,7 @@ export default function VaultDashboard({ currentUser, onLogout }) {
     const matchesSearch =
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.website.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.website || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -149,6 +217,9 @@ export default function VaultDashboard({ currentUser, onLogout }) {
           <i className="fa-solid fa-check-circle"></i> Copied {copiedField} to clipboard!
         </div>
       )}
+      {error && <p className="vault-request-error" role="alert">
+        {error} <button type="button" className="refresh-button" onClick={refreshItems} disabled={loading}>Retry</button>
+      </p>}
 
       {/* Top Banner Stats */}
       <section className="stats-row">
@@ -159,8 +230,8 @@ export default function VaultDashboard({ currentUser, onLogout }) {
           <div className="stat-info">
             <span className="stat-label">Security Health Score</span>
             <div className="stat-value-group">
-              <span className="stat-value">94%</span>
-              <span className="stat-badge badge-good">Optimal</span>
+              <span className="stat-value">—</span>
+              <span className="stat-badge badge-good">Not assessed</span>
             </div>
           </div>
         </div>
@@ -182,8 +253,8 @@ export default function VaultDashboard({ currentUser, onLogout }) {
           <div className="stat-info">
             <span className="stat-label">Reused Passwords</span>
             <div className="stat-value-group">
-              <span className="stat-value">1</span>
-              <span className="stat-badge badge-warn">Attention</span>
+              <span className="stat-value">—</span>
+              <span className="stat-badge badge-warn">Not assessed</span>
             </div>
           </div>
         </div>
@@ -195,8 +266,8 @@ export default function VaultDashboard({ currentUser, onLogout }) {
           <div className="stat-info">
             <span className="stat-label">Compromised / Leaked</span>
             <div className="stat-value-group">
-              <span className="stat-value">0</span>
-              <span className="stat-badge badge-clean">Protected</span>
+              <span className="stat-value">—</span>
+              <span className="stat-badge badge-clean">Not assessed</span>
             </div>
           </div>
         </div>
@@ -211,7 +282,11 @@ export default function VaultDashboard({ currentUser, onLogout }) {
               <h2 className="section-title">Encrypted Items</h2>
               <p className="section-sub">AES-256-GCM encrypted records in personal vault</p>
             </div>
-            <button className="primary-add-btn" onClick={() => setIsModalOpen(true)}>
+            <button className="primary-add-btn" onClick={() => {
+              setEditingId(null);
+              setNewItem({ title: '', category: 'Website Login', username: '', website: '', secret: '' });
+              setIsModalOpen(true);
+            }}>
               <i className="fa-solid fa-plus"></i> New Credential
             </button>
           </div>
@@ -243,14 +318,16 @@ export default function VaultDashboard({ currentUser, onLogout }) {
 
           {/* Items Table / List */}
           <div className="vault-items-container">
-            {filteredItems.length === 0 ? (
+            {loading ? (
+              <div className="empty-vault-placeholder" role="status">Loading your encrypted credentials…</div>
+            ) : filteredItems.length === 0 ? (
               <div className="empty-vault-placeholder">
                 <i className="fa-solid fa-box-open"></i>
-                <p>No credentials found matching your query.</p>
+                <p>{error ? 'Your credentials could not be loaded.' : 'No credentials found matching your query.'}</p>
               </div>
             ) : (
               filteredItems.map((item) => {
-                const isRevealed = !!revealedIds[item.id];
+                const isRevealed = revealedSecrets[item.id] !== undefined;
                 return (
                   <div key={item.id} className="vault-item-row">
                     <div className="item-icon-box">
@@ -278,21 +355,27 @@ export default function VaultDashboard({ currentUser, onLogout }) {
 
                     <div className="item-secret-area">
                       <span className="secret-display mono">
-                        {isRevealed ? item.secret : '••••••••••••••••'}
+                        {isRevealed ? revealedSecrets[item.id] : '••••••••••••••••'}
                       </span>
                       <button
                         className="icon-action-btn"
-                        onClick={() => toggleReveal(item.id)}
+                        onClick={() => toggleReveal(item)}
                         title={isRevealed ? 'Mask' : 'Reveal'}
                       >
                         <i className={`fa-regular ${isRevealed ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                       </button>
                       <button
                         className="icon-action-btn"
-                        onClick={() => copyToClipboard(item.secret, `${item.title} password`)}
-                        title="Copy password"
+                        onClick={() => copySecret(item)}
+                        title="Copy secret"
                       >
                         <i className="fa-regular fa-copy"></i>
+                      </button>
+                      <button className="icon-action-btn" onClick={() => editItem(item)} title="Edit credential">
+                        <i className="fa-regular fa-pen-to-square"></i>
+                      </button>
+                      <button className="icon-action-btn" onClick={() => deleteItem(item)} title="Delete credential">
+                        <i className="fa-regular fa-trash-can"></i>
                       </button>
                     </div>
                   </div>
@@ -333,8 +416,9 @@ export default function VaultDashboard({ currentUser, onLogout }) {
                   max="32"
                   value={genLength}
                   onChange={(e) => {
-                    setGenLength(Number(e.target.value));
-                    generatePassword();
+                    const length = Number(e.target.value);
+                    setGenLength(length);
+                    generatePassword(length);
                   }}
                   className="length-slider"
                 />
@@ -346,8 +430,9 @@ export default function VaultDashboard({ currentUser, onLogout }) {
                     type="checkbox"
                     checked={includeUpper}
                     onChange={(e) => {
-                      setIncludeUpper(e.target.checked);
-                      generatePassword();
+                      const checked = e.target.checked;
+                      setIncludeUpper(checked);
+                      generatePassword(genLength, checked, includeNumbers, includeSymbols);
                     }}
                   />
                   <span>Uppercase Letters (A-Z)</span>
@@ -357,8 +442,9 @@ export default function VaultDashboard({ currentUser, onLogout }) {
                     type="checkbox"
                     checked={includeNumbers}
                     onChange={(e) => {
-                      setIncludeNumbers(e.target.checked);
-                      generatePassword();
+                      const checked = e.target.checked;
+                      setIncludeNumbers(checked);
+                      generatePassword(genLength, includeUpper, checked, includeSymbols);
                     }}
                   />
                   <span>Numbers (0-9)</span>
@@ -368,8 +454,9 @@ export default function VaultDashboard({ currentUser, onLogout }) {
                     type="checkbox"
                     checked={includeSymbols}
                     onChange={(e) => {
-                      setIncludeSymbols(e.target.checked);
-                      generatePassword();
+                      const checked = e.target.checked;
+                      setIncludeSymbols(checked);
+                      generatePassword(genLength, includeUpper, includeNumbers, checked);
                     }}
                   />
                   <span>Special Symbols (!@#$)</span>
@@ -393,11 +480,11 @@ export default function VaultDashboard({ currentUser, onLogout }) {
             </div>
             <div className="spec-item">
               <span className="spec-label">Token Format:</span>
-              <span className="spec-val">JJWT HMAC-SHA384</span>
+              <span className="spec-val">JWT Bearer</span>
             </div>
             <div className="spec-item">
               <span className="spec-label">Database:</span>
-              <span className="spec-val">PostgreSQL 16 pgcrypto</span>
+              <span className="spec-val">PostgreSQL 16</span>
             </div>
           </div>
         </aside>
@@ -405,15 +492,15 @@ export default function VaultDashboard({ currentUser, onLogout }) {
 
       {/* New Credential Modal */}
       {isModalOpen && (
-        <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>
+        <div className="modal-backdrop" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Add New Vault Item</h3>
-              <button className="modal-close" onClick={() => setIsModalOpen(false)}>
+              <h3>{editingId ? 'Edit Vault Item' : 'Add New Vault Item'}</h3>
+            <button className="modal-close" type="button" onClick={closeModal}>
                 &times;
               </button>
             </div>
-            <form onSubmit={handleAddItem} className="modal-form">
+            <form onSubmit={handleSaveItem} className="modal-form">
               <div className="input-field-group">
                 <label>Title / Service Name</label>
                 <input
@@ -462,7 +549,7 @@ export default function VaultDashboard({ currentUser, onLogout }) {
 
               <div className="input-field-group">
                 <div className="label-row">
-                  <label>Password / Secret</label>
+                    <label>Password / Secret</label>
                   <button
                     type="button"
                     className="forgot-link"
@@ -484,12 +571,12 @@ export default function VaultDashboard({ currentUser, onLogout }) {
                 <button
                   type="button"
                   className="cancel-btn"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={closeModal}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="primary-action-btn">
-                  Encrypt & Save
+                <button type="submit" className="primary-action-btn" disabled={saving}>
+                  {saving ? 'Saving…' : editingId ? 'Encrypt & Update' : 'Encrypt & Save'}
                 </button>
               </div>
             </form>

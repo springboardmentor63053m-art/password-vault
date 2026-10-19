@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import "./App.css";
 
-function App() {
+function App({ accessToken, currentUser, onLogout }) {
   const [activePage, setActivePage] = useState("Dashboard");
   const [searchTerm, setSearchTerm] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
@@ -16,94 +16,279 @@ function App() {
     { name: "Settings", icon: "fa-solid fa-gear" },
   ];
 
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState("");
+  const [users, setUsers] = useState([]);
+  const [assignableRoles, setAssignableRoles] = useState([]);
+  const [roleSelections, setRoleSelections] = useState({});
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState("");
+  const [userActionMessage, setUserActionMessage] = useState("");
+  const [vaultStats, setVaultStats] = useState(null);
+  const [vaultStatsLoading, setVaultStatsLoading] = useState(false);
+  const [vaultStatsError, setVaultStatsError] = useState("");
+  const [securityAnalytics, setSecurityAnalytics] = useState([]);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState("");
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [activityLogsLoading, setActivityLogsLoading] = useState(false);
+  const [activityLogsError, setActivityLogsError] = useState("");
+  const [adminSettings, setAdminSettings] = useState({
+    securityMonitoringEnabled: true,
+    activityMonitoringEnabled: true,
+  });
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState("");
+  const [settingsError, setSettingsError] = useState("");
+
+  const refreshAdminSettings = useCallback(async () => {
+    setSettingsLoading(true);
+    setSettingsError("");
+    setSettingsMessage("");
+    try {
+      const response = await fetch("/api/admin/settings", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (response.status === 401 || response.status === 403) {
+        onLogout?.();
+        return;
+      }
+      if (!response.ok) throw new Error(`Settings could not be loaded (HTTP ${response.status}).`);
+      setAdminSettings(await response.json());
+      setSettingsLoaded(true);
+    } catch (error) {
+      setSettingsError(error instanceof Error ? error.message : "Could not load settings. Try refreshing.");
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, [accessToken, onLogout]);
+
+  const saveAdminSettings = async () => {
+    setSettingsSaving(true);
+    setSettingsError("");
+    setSettingsMessage("");
+    try {
+      const response = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(adminSettings),
+      });
+      if (response.status === 401 || response.status === 403) {
+        onLogout?.();
+        return;
+      }
+      if (!response.ok) throw new Error(`Settings could not be saved (HTTP ${response.status}).`);
+      setAdminSettings(await response.json());
+      setSettingsLoaded(true);
+      setSettingsMessage("Settings saved successfully.");
+    } catch (error) {
+      setSettingsError(error instanceof Error ? error.message : "Could not save settings. Try again.");
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activePage === "Settings") refreshAdminSettings();
+  }, [activePage, refreshAdminSettings]);
+
+  const refreshActivityLogs = useCallback(async () => {
+    setActivityLogsLoading(true);
+    setActivityLogsError("");
+    try {
+      const response = await fetch("/api/admin/activity-logs", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (response.status === 401 || response.status === 403) {
+        onLogout?.();
+        return;
+      }
+      if (!response.ok) throw new Error("Activity logs could not be loaded.");
+      setActivityLogs(await response.json());
+    } catch {
+      setActivityLogsError("Could not load activity logs. Try refreshing.");
+    } finally {
+      setActivityLogsLoading(false);
+    }
+  }, [accessToken, onLogout]);
+
+  useEffect(() => {
+    if (activePage === "Activity Logs" || activePage === "Dashboard") refreshActivityLogs();
+  }, [activePage, refreshActivityLogs]);
+
+  const refreshSecurityAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true);
+    setAnalyticsError("");
+    try {
+      const response = await fetch("/api/admin/analytics/security-events", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (response.status === 401 || response.status === 403) {
+        onLogout?.();
+        return;
+      }
+      if (!response.ok) throw new Error(`Analytics could not be loaded (HTTP ${response.status}).`);
+      setSecurityAnalytics(await response.json());
+    } catch (error) {
+      setAnalyticsError(error instanceof Error
+        ? error.message
+        : "Could not load security analytics. Try refreshing.");
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [accessToken, onLogout]);
+
+  useEffect(() => {
+    if (activePage === "Security Analytics") refreshSecurityAnalytics();
+  }, [activePage, refreshSecurityAnalytics]);
+
+  const refreshVaultStatistics = useCallback(async () => {
+    setVaultStatsLoading(true);
+    setVaultStatsError("");
+    try {
+      const response = await fetch("/api/admin/vault/statistics", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (response.status === 401 || response.status === 403) {
+        onLogout?.();
+        return;
+      }
+      if (!response.ok) throw new Error("Vault statistics could not be loaded.");
+      setVaultStats(await response.json());
+    } catch {
+      setVaultStatsError("Could not load vault statistics. Try refreshing.");
+    } finally {
+      setVaultStatsLoading(false);
+    }
+  }, [accessToken, onLogout]);
+
+  useEffect(() => {
+    if (activePage === "Password Vault") refreshVaultStatistics();
+  }, [activePage, refreshVaultStatistics]);
+
+  const refreshStatistics = useCallback(async () => {
+    setStatsLoading(true);
+    setStatsError("");
+    try {
+      const response = await fetch("/api/admin/dashboard/statistics", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (response.status === 401 || response.status === 403) {
+        onLogout?.();
+        return;
+      }
+      if (!response.ok) throw new Error("Statistics could not be loaded.");
+      setDashboardStats(await response.json());
+    } catch {
+      setStatsError("Could not load live dashboard statistics. Try refreshing.");
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [accessToken, onLogout]);
+
+  useEffect(() => {
+    refreshStatistics();
+  }, [refreshStatistics]);
+
+  const refreshUsers = useCallback(async () => {
+    setUsersLoading(true);
+    setUsersError("");
+    setUserActionMessage("");
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const [usersResponse, rolesResponse] = await Promise.all([
+        fetch("/api/admin/users", { headers }),
+        fetch("/api/admin/roles", { headers }),
+      ]);
+      if ([usersResponse.status, rolesResponse.status].some((status) => status === 401 || status === 403)) {
+        onLogout?.();
+        return;
+      }
+      if (!usersResponse.ok || !rolesResponse.ok) {
+        throw new Error("User information could not be loaded.");
+      }
+      const [userList, roleList] = await Promise.all([usersResponse.json(), rolesResponse.json()]);
+      setUsers(userList);
+      setAssignableRoles(roleList);
+      setRoleSelections((previous) => Object.fromEntries(
+        userList.map((user) => [user.id, previous[user.id] || roleList[0] || ""]),
+      ));
+    } catch {
+      setUsersError("Could not load users and available roles. Try refreshing.");
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [accessToken, onLogout]);
+
+  useEffect(() => {
+    if (activePage === "User Management") refreshUsers();
+  }, [activePage, refreshUsers]);
+
+  const assignUserRole = async (userId) => {
+    setUsersError("");
+    setUserActionMessage("");
+    try {
+      const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/role`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role: roleSelections[userId] }),
+      });
+      if (response.status === 401 || response.status === 403) {
+        onLogout?.();
+        return;
+      }
+      if (!response.ok) throw new Error("Role assignment failed.");
+      await refreshUsers();
+      setUserActionMessage("Role assigned successfully.");
+    } catch {
+      setUsersError("Could not assign the selected role. Try again.");
+    }
+  };
+
   const stats = [
     {
       title: "Total Users",
-      value: "2,845",
-      change: "+12.8%",
-      description: "Compared to last month",
+      key: "totalUsers",
+      description: "Registered accounts",
       icon: "fa-solid fa-users",
       color: "blue",
     },
     {
       title: "Stored Credentials",
-      value: "12,490",
-      change: "+8.4%",
-      description: "Compared to last month",
+      key: "storedCredentials",
+      description: "Credentials in vaults",
       icon: "fa-solid fa-key",
       color: "purple",
     },
     {
       title: "Active Sessions",
-      value: "184",
-      change: "+5.2%",
-      description: "Compared to last month",
+      key: "activeSessions",
+      description: "Unrevoked, unexpired sessions",
       icon: "fa-solid fa-desktop",
       color: "green",
     },
     {
       title: "Security Alerts",
-      value: "07",
-      change: "Needs review",
-      description: "Review security events",
+      key: "securityAlerts",
+      description: "Unresolved security events",
       icon: "fa-solid fa-shield-halved",
       color: "orange",
     },
   ];
 
-  const activities = [
-    {
-      name: "Ananya Sharma",
-      email: "ananya@example.com",
-      action: "Logged in",
-      device: "Windows · Chrome",
-      time: "2 minutes ago",
-      status: "Success",
-      initials: "AS",
-    },
-    {
-      name: "Rahul Verma",
-      email: "rahul@example.com",
-      action: "Password updated",
-      device: "Android · Chrome",
-      time: "15 minutes ago",
-      status: "Success",
-      initials: "RV",
-    },
-    {
-      name: "Priya Reddy",
-      email: "priya@example.com",
-      action: "New account created",
-      device: "Windows · Edge",
-      time: "32 minutes ago",
-      status: "Success",
-      initials: "PR",
-    },
-    {
-      name: "Arjun Kumar",
-      email: "arjun@example.com",
-      action: "Login attempt",
-      device: "Unknown device",
-      time: "48 minutes ago",
-      status: "Review",
-      initials: "AK",
-    },
-    {
-      name: "Sneha Patel",
-      email: "sneha@example.com",
-      action: "Vault accessed",
-      device: "iPhone · Safari",
-      time: "1 hour ago",
-      status: "Success",
-      initials: "SP",
-    },
-  ];
-
-  const filteredActivities = activities.filter((activity) =>
-    `${activity.name} ${activity.email} ${activity.action} ${activity.status}`
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase()),
+  const filteredActivities = activityLogs.filter((activity) =>
+    `${activity.username} ${activity.activity} ${activity.device || ""} ${activity.status}`.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+  const formatActivityTime = (timestamp) => new Date(timestamp).toLocaleString();
 
   const handleNavigation = (page) => {
     setActivePage(page);
@@ -124,17 +309,13 @@ function App() {
                     <i className={stat.icon}></i>
                   </div>
 
-                  {stat.title !== "Security Alerts" && (
-                    <span className="stat-change">
-                      <i className="fa-solid fa-arrow-trend-up"></i>
-                      {stat.change}
-                    </span>
-                  )}
                 </div>
 
                 <p className="stat-title">{stat.title}</p>
 
-                <h2 className="stat-value">{stat.value}</h2>
+                <h2 className="stat-value">
+                  {statsLoading ? "…" : dashboardStats?.[stat.key] ?? "—"}
+                </h2>
 
                 <p className="stat-description">{stat.description}</p>
               </article>
@@ -154,8 +335,7 @@ function App() {
                 </div>
 
                 <span className="live-badge">
-                  <span className="live-dot"></span>
-                  Live
+                  Overview
                 </span>
               </div>
 
@@ -166,31 +346,31 @@ function App() {
                   </div>
 
                   <span className="security-check">
-                    <i className="fa-solid fa-check"></i>
+                    <i className="fa-solid fa-circle-question"></i>
                   </span>
                 </div>
 
                 <div className="security-score">
-                  <h3>Excellent</h3>
-                  <p>Your vault is protected</p>
+                    <h3>Not assessed</h3>
+                    <p>No current security score is available</p>
 
                   <div className="progress-track">
-                    <div className="progress-fill"></div>
+                    <div className="progress-fill" style={{ width: "0%" }}></div>
                   </div>
 
-                  <span>92% security score</span>
+                  <span>Security score unavailable</span>
                 </div>
               </div>
 
               <div className="security-footer">
                 <div>
                   <i className="fa-solid fa-lock"></i>
-                  <span>Encryption enabled</span>
+                  <span>Encryption status unavailable</span>
                 </div>
 
                 <div>
                   <i className="fa-solid fa-shield-halved"></i>
-                  <span>Security monitoring</span>
+                  <span>Monitoring preference</span>
                 </div>
               </div>
             </article>
@@ -286,26 +466,34 @@ function App() {
                 </thead>
 
                 <tbody>
-                  {activities.slice(0, 4).map((activity, index) => (
+                  {activityLogsLoading && (
+                    <tr><td colSpan="5" className="empty-results">Loading recent activity…</td></tr>
+                  )}
+                  {!activityLogsLoading && activityLogsError && (
+                    <tr><td colSpan="5" className="empty-results">{activityLogsError}</td></tr>
+                  )}
+                  {!activityLogsLoading && !activityLogsError && activityLogs.length === 0 && (
+                    <tr><td colSpan="5" className="empty-results">No activity records found.</td></tr>
+                  )}
+                  {!activityLogsLoading && !activityLogsError && activityLogs.slice(0, 4).map((activity, index) => (
                     <tr key={index}>
                       <td>
                         <div className="user-cell">
                           <div className={`user-avatar avatar-${index + 1}`}>
-                            {activity.initials}
+                            {activity.username.slice(0, 2).toUpperCase()}
                           </div>
 
                           <div>
-                            <strong>{activity.name}</strong>
-                            <span>{activity.email}</span>
+                            <strong>{activity.username}</strong>
                           </div>
                         </div>
                       </td>
 
-                      <td>{activity.action}</td>
+                      <td>{activity.activity}</td>
 
-                      <td>{activity.device}</td>
+                      <td>{activity.device || "Unknown device"}</td>
 
-                      <td>{activity.time}</td>
+                      <td>{formatActivityTime(activity.timestamp)}</td>
 
                       <td>
                         <span
@@ -334,10 +522,10 @@ function App() {
 
               <div>
                 <h3>System Protection</h3>
-                <p>Security monitoring is enabled.</p>
+                <p>Live protection status is unavailable.</p>
                 <span className="info-status">
                   <i className="fa-solid fa-circle-check"></i>
-                  Protection active
+                  Status unavailable
                 </span>
               </div>
             </article>
@@ -361,36 +549,98 @@ function App() {
     }
 
     if (activePage === "User Management") {
+      const activeUsers = users.filter((user) => user.active).length;
       return (
-        <section className="dashboard-card page-placeholder">
-          <div className="placeholder-icon blue">
-            <i className="fa-solid fa-users"></i>
-          </div>
-
-          <h2>User Management</h2>
-
-          <p>
-            Manage registered users, review account details, and monitor user
-            access.
-          </p>
-
-          <div className="placeholder-stats">
-            <div>
-              <span>Total Users</span>
-              <strong>2,845</strong>
+        <>
+          <section className="dashboard-card page-placeholder user-management-summary">
+            <div className="placeholder-icon blue">
+              <i className="fa-solid fa-users"></i>
             </div>
 
-            <div>
-              <span>Active Users</span>
-              <strong>2,610</strong>
+            <h2>User Management</h2>
+
+            <p>
+              Manage registered users, review account details, and monitor user
+              access.
+            </p>
+
+            <div className="placeholder-stats">
+              <div>
+                <span>Total Users</span>
+                <strong>{usersLoading ? "…" : users.length}</strong>
+              </div>
+
+              <div>
+                <span>Active Users</span>
+                <strong>{usersLoading ? "…" : activeUsers}</strong>
+              </div>
+
+              <div>
+                <span>Inactive Users</span>
+                <strong>{usersLoading ? "…" : users.length - activeUsers}</strong>
+              </div>
             </div>
 
-            <div>
-              <span>Pending Reviews</span>
-              <strong>07</strong>
+            <div className="user-management-toolbar">
+              <span>{assignableRoles.length} assignable roles available</span>
+              <button className="refresh-button" onClick={refreshUsers} disabled={usersLoading}>
+                <i className="fa-solid fa-rotate-right"></i> Refresh users
+              </button>
             </div>
-          </div>
-        </section>
+            {usersError && <p className="user-management-message error" role="alert">{usersError}</p>}
+            {userActionMessage && <p className="user-management-message" role="status">{userActionMessage}</p>}
+          </section>
+
+          <section className="dashboard-card activity-card user-management-card">
+            <div className="card-heading activity-heading">
+              <div>
+                <h2>Registered Users</h2>
+                <p>Review account status and assign an allowed role.</p>
+              </div>
+            </div>
+            <div className="table-wrapper">
+              <table className="activity-table user-management-table">
+                <thead>
+                  <tr><th>USERNAME</th><th>EMAIL</th><th>STATUS</th><th>ROLES</th><th>ASSIGN ROLE</th></tr>
+                </thead>
+                <tbody>
+                  {usersLoading && <tr><td colSpan="5" className="empty-results">Loading users…</td></tr>}
+                  {!usersLoading && users.length === 0 && <tr><td colSpan="5" className="empty-results">No users found.</td></tr>}
+                  {!usersLoading && users.map((user) => (
+                    <tr key={user.id}>
+                      <td>{user.username}</td>
+                      <td>{user.email}</td>
+                      <td><span className={`status-badge ${user.active ? "success" : "review"}`}>
+                        <span className="status-dot"></span>{user.active ? "Active" : "Inactive"}
+                      </span></td>
+                      <td>{user.roles.length ? user.roles.join(", ") : "—"}</td>
+                      <td>
+                        <div className="user-role-controls">
+                          <select
+                            aria-label={`Role to assign to ${user.username}`}
+                            value={roleSelections[user.id] || ""}
+                            onChange={(event) => setRoleSelections((previous) => ({
+                              ...previous,
+                              [user.id]: event.target.value,
+                            }))}
+                            disabled={!assignableRoles.length}
+                          >
+                            {assignableRoles.map((role) => <option key={role} value={role}>{role}</option>)}
+                          </select>
+                          <button
+                            className="refresh-button user-role-assign-button"
+                            onClick={() => assignUserRole(user.id)}
+                            disabled={!assignableRoles.length || usersLoading}
+                          >Add role</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
       );
     }
 
@@ -410,24 +660,21 @@ function App() {
           <div className="placeholder-stats">
             <div>
               <span>Stored Credentials</span>
-              <strong>12,490</strong>
+            <strong>{vaultStatsLoading ? "…" : vaultStats?.storedCredentials?.toLocaleString() ?? "—"}</strong>
             </div>
 
             <div>
               <span>Protected Vaults</span>
-              <strong>2,610</strong>
+            <strong>{vaultStatsLoading ? "…" : vaultStats?.protectedVaults?.toLocaleString() ?? "—"}</strong>
             </div>
 
             <div>
               <span>Security Status</span>
-              <strong className="green-text">Protected</strong>
+              <strong>Not assessed</strong>
             </div>
           </div>
 
-          <p className="demo-notice">
-            This is a dashboard preview. Live vault data will be connected
-            through the backend.
-          </p>
+          {vaultStatsError && <p className="demo-notice" role="alert">{vaultStatsError}</p>}
         </section>
       );
     }
@@ -444,21 +691,22 @@ function App() {
           <p>Review security indicators and monitor application protection.</p>
 
           <div className="analytics-bars">
-            {[65, 85, 55, 95, 72, 88, 60].map((height, index) => (
+            {securityAnalytics.map((point, index, points) => (
               <div className="bar-column" key={index}>
-                <div className="bar" style={{ height: `${height}%` }}></div>
+                <div className="bar" title={`${point.count} security events`} style={{ height: `${point.count === 0 ? 0 : Math.max(8, (point.count / Math.max(...points.map(({ count }) => count))) * 100)}%` }}></div>
 
                 <span>
-                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index]}
+                  {new Date(`${point.date}T00:00:00Z`).toLocaleDateString(undefined, { weekday: "short", timeZone: "UTC" })}
                 </span>
               </div>
             ))}
           </div>
 
-          <p className="demo-notice">
-            Sample visualization only. Connect real analytics data for
-            production use.
-          </p>
+          {analyticsLoading && <p className="demo-notice" role="status">Loading security analytics…</p>}
+          {analyticsError && <p className="demo-notice" role="alert">{analyticsError}</p>}
+          {!analyticsLoading && !analyticsError && securityAnalytics.length > 0
+            && securityAnalytics.every((point) => point.count === 0)
+            && <p className="demo-notice" role="status">No security events recorded in the last 7 days.</p>}
         </section>
       );
     }
@@ -493,19 +741,18 @@ function App() {
                         <div
                           className={`user-avatar avatar-${(index % 5) + 1}`}
                         >
-                          {activity.initials}
+                          {activity.username.slice(0, 2).toUpperCase()}
                         </div>
 
                         <div>
-                          <strong>{activity.name}</strong>
-                          <span>{activity.email}</span>
+                          <strong>{activity.username}</strong>
                         </div>
                       </div>
                     </td>
 
-                    <td>{activity.action}</td>
-                    <td>{activity.device}</td>
-                    <td>{activity.time}</td>
+                    <td>{activity.activity}</td>
+                    <td>{activity.device || "Unknown device"}</td>
+                    <td>{formatActivityTime(activity.timestamp)}</td>
 
                     <td>
                       <span
@@ -523,7 +770,7 @@ function App() {
                 {filteredActivities.length === 0 && (
                   <tr>
                     <td colSpan="5" className="empty-results">
-                      No matching activities found.
+                      {activityLogsLoading ? "Loading activity logs…" : activityLogsError || "No activity records found."}
                     </td>
                   </tr>
                 )}
@@ -551,7 +798,18 @@ function App() {
               <span>Display security monitoring status</span>
             </div>
 
-            <span className="settings-enabled">Enabled</span>
+            <button
+              type="button"
+              className="settings-enabled"
+              aria-pressed={settingsLoaded ? adminSettings.securityMonitoringEnabled : undefined}
+              disabled={settingsLoading || settingsSaving || !settingsLoaded}
+              onClick={() => setAdminSettings((current) => ({
+                ...current,
+                securityMonitoringEnabled: !current.securityMonitoringEnabled,
+              }))}
+            >
+              {settingsLoading ? "Loading…" : settingsLoaded ? adminSettings.securityMonitoringEnabled ? "Enabled" : "Disabled" : "Unavailable"}
+            </button>
           </div>
 
           <div className="settings-row">
@@ -560,13 +818,26 @@ function App() {
               <span>Review account activity records</span>
             </div>
 
-            <span className="settings-enabled">Enabled</span>
+            <button
+              type="button"
+              className="settings-enabled"
+              aria-pressed={settingsLoaded ? adminSettings.activityMonitoringEnabled : undefined}
+              disabled={settingsLoading || settingsSaving || !settingsLoaded}
+              onClick={() => setAdminSettings((current) => ({
+                ...current,
+                activityMonitoringEnabled: !current.activityMonitoringEnabled,
+              }))}
+            >
+              {settingsLoading ? "Loading…" : settingsLoaded ? adminSettings.activityMonitoringEnabled ? "Enabled" : "Disabled" : "Unavailable"}
+            </button>
           </div>
 
-          <p className="demo-notice">
-            Settings shown here are a frontend preview. Save settings through
-            the backend when it is integrated.
-          </p>
+          <button className="refresh-button" onClick={saveAdminSettings}
+            disabled={settingsLoading || settingsSaving || !settingsLoaded}>
+            {settingsSaving ? "Saving…" : "Save Settings"}
+          </button>
+          {settingsMessage && <p className="demo-notice" role="status">{settingsMessage}</p>}
+          {settingsError && <p className="demo-notice" role="alert">{settingsError}</p>}
         </section>
       );
     }
@@ -634,7 +905,7 @@ function App() {
             </div>
 
             <div className="admin-details">
-              <strong>Administrator</strong>
+              <strong>{currentUser?.username || "Administrator"}</strong>
               <span>System Admin</span>
             </div>
 
@@ -689,34 +960,14 @@ function App() {
                 }}
               >
                 <i className="fa-regular fa-bell"></i>
-                <span className="notification-dot"></span>
+
               </button>
 
               {showNotifications && (
                 <div className="floating-menu notification-menu">
                   <h3>Notifications</h3>
 
-                  <div className="notification-item">
-                    <span className="notification-icon orange">
-                      <i className="fa-solid fa-shield-halved"></i>
-                    </span>
-
-                    <div>
-                      <strong>Security review</strong>
-                      <p>One login attempt needs review.</p>
-                    </div>
-                  </div>
-
-                  <div className="notification-item">
-                    <span className="notification-icon blue">
-                      <i className="fa-solid fa-users"></i>
-                    </span>
-
-                    <div>
-                      <strong>User activity</strong>
-                      <p>Review recent account activity.</p>
-                    </div>
-                  </div>
+                  <p className="empty-results">No notifications available.</p>
                 </div>
               )}
             </div>
@@ -744,8 +995,8 @@ function App() {
               {showProfile && (
                 <div className="floating-menu profile-menu">
                   <div className="profile-menu-heading">
-                    <strong>Administrator</strong>
-                    <span>Admin account</span>
+                    <strong>{currentUser?.username || "Administrator"}</strong>
+                    <span>{currentUser?.email || "Admin account"}</span>
                   </div>
 
                   <button
@@ -761,9 +1012,7 @@ function App() {
                   <button
                     onClick={() => {
                       setShowProfile(false);
-                      window.alert(
-                        "Connect the backend logout endpoint to enable logout.",
-                      );
+                      onLogout?.();
                     }}
                   >
                     <i className="fa-solid fa-right-from-bracket"></i>
@@ -801,7 +1050,14 @@ function App() {
               setSearchTerm("");
               setShowNotifications(false);
               setShowProfile(false);
+              refreshStatistics();
+              if (activePage === "User Management") refreshUsers();
+              if (activePage === "Security Analytics") refreshSecurityAnalytics();
+              if (activePage === "Password Vault") refreshVaultStatistics();
+              if (activePage === "Activity Logs" || activePage === "Dashboard") refreshActivityLogs();
+              if (activePage === "Settings") refreshAdminSettings();
             }}
+            disabled={statsLoading || analyticsLoading || vaultStatsLoading || activityLogsLoading || settingsLoading || settingsSaving}
           >
             <i className="fa-solid fa-rotate-right"></i>
             Refresh View
@@ -810,6 +1066,7 @@ function App() {
 
         {/* PAGE CONTENT */}
 
+        {statsError && <p className="demo-notice" role="alert">{statsError}</p>}
         {renderPageContent()}
 
         {/* FOOTER */}

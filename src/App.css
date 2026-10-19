@@ -2,13 +2,13 @@
    1. GLOBAL STYLES
 ========================================= */
 
-* {
+.admin-layout, .admin-layout *, .admin-layout *::before, .admin-layout *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-:root {
+.admin-layout {
   font-family: Arial, Helvetica, sans-serif;
   color: #252b3b;
   background: #f5f7fb;
@@ -18,43 +18,43 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-html {
+.admin-layout {
   min-width: 320px;
   min-height: 100%;
 }
 
-body {
+.admin-layout {
   min-width: 320px;
   min-height: 100vh;
   background: #f5f7fb;
 }
 
-button,
-input {
+.admin-layout button,
+.admin-layout input {
   font: inherit;
 }
 
-button {
+.admin-layout button {
   -webkit-tap-highlight-color: transparent;
 }
 
-button:focus-visible,
-input:focus-visible {
+.admin-layout button:focus-visible,
+.admin-layout input:focus-visible {
   outline: 2px solid #2455e8;
   outline-offset: 3px;
 }
 
-button:disabled {
+.admin-layout button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-button {
+.admin-layout button {
   -webkit-appearance: none;
   appearance: none;
 }
 
-::selection {
+.admin-layout ::selection {
   background: #dbe6ff;
   color: #183fc3;
 }
@@ -107,14 +107,14 @@ button {
   box-shadow: 0 5px 13px rgba(36, 85, 232, 0.2);
 }
 
-.brand-text h2 {
+.admin-layout .brand-text h2 {
   color: #17254a;
   font-size: 19px;
   font-weight: 800;
   letter-spacing: -0.6px;
 }
 
-.brand-text span {
+.admin-layout .brand-text span {
   display: block;
   margin-top: 4px;
   color: #8490a6;
@@ -175,14 +175,14 @@ button {
   color: #2455e8;
 }
 
-.nav-item.active {
+.admin-layout .nav-item.active {
   border-color: #e1e9ff;
   background: #edf2ff;
   color: #2455e8;
   font-weight: 700;
 }
 
-.nav-item.active::before {
+.admin-layout .nav-item.active::before {
   content: "";
   position: absolute;
   top: 9px;
@@ -316,10 +316,11 @@ button {
    6. MAIN CONTENT
 ========================================= */
 
-.main-content {
+.admin-layout > .main-content {
+  display: block;
   min-width: 0;
   min-height: 100vh;
-  flex: 1;
+  flex: 1 1 0%;
   padding: 0 32px;
 }
 
@@ -371,7 +372,7 @@ button {
   gap: 15px;
 }
 
-.search-box {
+.admin-layout .search-box {
   width: 250px;
   height: 41px;
   display: flex;
@@ -387,17 +388,17 @@ button {
     box-shadow 0.2s ease;
 }
 
-.search-box:focus-within {
+.admin-layout .search-box:focus-within {
   border-color: #8eaaff;
   box-shadow: 0 0 0 3px rgba(36, 85, 232, 0.07);
 }
 
-.search-box > i {
+.admin-layout .search-box > i {
   flex-shrink: 0;
   font-size: 13px;
 }
 
-.search-box input {
+.admin-layout .search-box input {
   width: 100%;
   min-width: 0;
   border: none;
@@ -407,15 +408,15 @@ button {
   font-size: 11px;
 }
 
-.search-box input:focus-visible {
+.admin-layout .search-box input:focus-visible {
   outline: none;
 }
 
-.search-box input::placeholder {
+.admin-layout .search-box input::placeholder {
   color: #a2aabd;
 }
 
-.search-box kbd {
+.admin-layout .search-box kbd {
   padding: 3px 5px;
   border: 1px solid #e8ecf3;
   border-radius: 4px;
@@ -558,12 +559,12 @@ button {
   border-radius: 9px;
 }
 
-.notification-icon.orange {
+.admin-layout .notification-icon.orange {
   background: #fff1e3;
   color: #e88b2b;
 }
 
-.notification-icon.blue {
+.admin-layout .notification-icon.blue {
   background: #edf2ff;
   color: #2455e8;
 }
@@ -704,7 +705,7 @@ button {
   margin-bottom: 21px;
 }
 
-.stat-card {
+.admin-layout .stat-card {
   min-width: 0;
   padding: 19px 18px 18px;
   border: 1px solid #e9edf5;
@@ -716,7 +717,7 @@ button {
     box-shadow 0.2s ease;
 }
 
-.stat-card:hover {
+.admin-layout .stat-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 9px 22px rgba(27, 44, 83, 0.06);
 }
@@ -729,7 +730,7 @@ button {
   margin-bottom: 19px;
 }
 
-.stat-icon {
+.admin-layout .stat-icon {
   width: 43px;
   height: 43px;
   display: flex;
@@ -740,28 +741,28 @@ button {
   font-size: 19px;
 }
 
-.stat-icon.blue,
-.action-icon.blue,
-.placeholder-icon.blue {
+.admin-layout .stat-icon.blue,
+.admin-layout .action-icon.blue,
+.admin-layout .placeholder-icon.blue {
   background: #e9efff;
   color: #315fe5;
 }
 
-.stat-icon.purple,
-.action-icon.purple,
-.placeholder-icon.purple {
+.admin-layout .stat-icon.purple,
+.admin-layout .action-icon.purple,
+.admin-layout .placeholder-icon.purple {
   background: #f0eaff;
   color: #8a5de5;
 }
 
-.stat-icon.green,
-.action-icon.green,
-.placeholder-icon.green {
+.admin-layout .stat-icon.green,
+.admin-layout .action-icon.green,
+.admin-layout .placeholder-icon.green {
   background: #e2f8ed;
   color: #1aa56a;
 }
 
-.stat-icon.orange {
+.admin-layout .stat-icon.orange {
   background: #fff0e2;
   color: #e99538;
 }
@@ -786,7 +787,7 @@ button {
   font-weight: 500;
 }
 
-.stat-value {
+.admin-layout .stat-value {
   margin-top: 9px;
   color: #26324b;
   font-size: 29px;
@@ -805,7 +806,7 @@ button {
    13. DASHBOARD GRID
 ========================================= */
 
-.dashboard-grid {
+.admin-layout .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
   gap: 19px;
@@ -1202,7 +1203,7 @@ button {
   font-weight: 700;
 }
 
-.status-badge.success {
+.admin-layout .status-badge.success {
   background: #eaf9f0;
   color: #1d9659;
 }
@@ -1254,12 +1255,12 @@ button {
   font-size: 20px;
 }
 
-.bottom-icon.green {
+.admin-layout .bottom-icon.green {
   background: #e4f8ee;
   color: #1a9d64;
 }
 
-.bottom-icon.purple {
+.admin-layout .bottom-icon.purple {
   background: #f0eaff;
   color: #865de0;
 }
@@ -1352,6 +1353,60 @@ button {
   color: #26334d;
   font-size: 22px;
   overflow-wrap: anywhere;
+}
+
+.user-management-summary {
+  min-height: 0;
+}
+
+.user-management-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 25px;
+  color: #8792a8;
+  font-size: 11px;
+}
+
+.user-management-message {
+  margin-top: 14px;
+  color: #1d9659;
+  font-size: 11px;
+}
+
+.user-management-message.error {
+  color: #c24146;
+}
+
+.user-management-card {
+  min-width: 0;
+}
+
+.user-management-table {
+  min-width: 850px;
+}
+
+.user-role-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-role-controls select {
+  min-width: 155px;
+  height: 36px;
+  padding: 0 9px;
+  border: 1px solid #e0e6f1;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #53617c;
+  font-size: 10px;
+}
+
+.user-role-assign-button {
+  min-height: 36px;
+  white-space: nowrap;
 }
 
 .green-text {
@@ -1460,6 +1515,14 @@ button {
   color: #1b965a !important;
   font-weight: 700;
   white-space: nowrap;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.settings-enabled:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 /* =========================================
@@ -1518,7 +1581,7 @@ button {
     min-width: 225px;
   }
 
-  .main-content {
+  .admin-layout > .main-content {
     padding: 0 23px;
   }
 
@@ -1526,11 +1589,11 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .stat-card {
+  .admin-layout .stat-card {
     padding: 17px;
   }
 
-  .dashboard-grid {
+  .admin-layout .dashboard-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1562,7 +1625,7 @@ button {
     height: 43px;
   }
 
-  .brand-text,
+  .admin-layout .brand-text,
   .sidebar-label,
   .nav-item span,
   .sidebar-security,
@@ -1587,7 +1650,7 @@ button {
     font-size: 17px;
   }
 
-  .nav-item.active::before {
+  .admin-layout .nav-item.active::before {
     left: -11px;
   }
 
@@ -1608,7 +1671,7 @@ button {
     gap: 9px;
   }
 
-  .search-box {
+  .admin-layout .search-box {
     width: 190px;
   }
 
@@ -1647,15 +1710,15 @@ button {
     margin: 0 auto 0 0;
   }
 
-  .brand-text {
+  .admin-layout .brand-text {
     display: block;
   }
 
-  .brand-text h2 {
+  .admin-layout .brand-text h2 {
     font-size: 17px;
   }
 
-  .brand-text span {
+  .admin-layout .brand-text span {
     font-size: 8px;
   }
 
@@ -1686,11 +1749,11 @@ button {
     font-size: 14px;
   }
 
-  .nav-item.active::before {
+  .admin-layout .nav-item.active::before {
     display: none;
   }
 
-  .main-content {
+  .admin-layout > .main-content {
     width: 100%;
     padding: 0 16px;
   }
@@ -1707,7 +1770,7 @@ button {
     justify-content: space-between;
   }
 
-  .search-box {
+  .admin-layout .search-box {
     flex: 1;
     width: auto;
   }
@@ -1737,7 +1800,7 @@ button {
     gap: 11px;
   }
 
-  .stat-card {
+  .admin-layout .stat-card {
     padding: 14px;
   }
 
@@ -1747,13 +1810,13 @@ button {
     margin-bottom: 13px;
   }
 
-  .stat-icon {
+  .admin-layout .stat-icon {
     width: 38px;
     height: 38px;
     font-size: 17px;
   }
 
-  .stat-value {
+  .admin-layout .stat-value {
     font-size: 25px;
   }
 
@@ -1842,7 +1905,7 @@ button {
     flex-shrink: 0;
   }
 
-  .main-content {
+  .admin-layout > .main-content {
     padding: 0 12px;
   }
 
@@ -1850,12 +1913,12 @@ button {
     gap: 7px;
   }
 
-  .search-box {
+  .admin-layout .search-box {
     gap: 6px;
     padding: 0 8px;
   }
 
-  .search-box kbd {
+  .admin-layout .search-box kbd {
     display: none;
   }
 
@@ -1873,7 +1936,7 @@ button {
     gap: 9px;
   }
 
-  .stat-card {
+  .admin-layout .stat-card {
     padding: 12px;
   }
 
@@ -1881,7 +1944,7 @@ button {
     font-size: 10px;
   }
 
-  .stat-value {
+  .admin-layout .stat-value {
     font-size: 23px;
   }
 
@@ -1922,9 +1985,10 @@ button {
 ========================================= */
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  .admin-layout,
+  .admin-layout *,
+  .admin-layout *::before,
+  .admin-layout *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;

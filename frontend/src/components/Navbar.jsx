@@ -4,7 +4,7 @@ export default function Navbar({ activeView, setActiveView, currentUser, onLogou
   return (
     <header className="navbar">
       <div className="nav-container">
-        <div className="nav-brand" onClick={() => setActiveView(currentUser ? 'vault' : 'login')}>
+        <div className="nav-brand" onClick={() => setActiveView(currentUser ? (currentUser.role === 'ROLE_ADMIN' ? 'admin' : 'vault') : 'login')}>
           <div className="brand-logo-icon">
             <i className="fa-solid fa-shield-halved"></i>
           </div>
@@ -38,6 +38,14 @@ export default function Navbar({ activeView, setActiveView, currentUser, onLogou
             </>
           ) : (
             <>
+              {currentUser.role === 'ROLE_ADMIN' && (
+                <button
+                  className={`nav-link-btn ${activeView === 'admin' ? 'active' : ''}`}
+                  onClick={() => setActiveView('admin')}
+                >
+                  <i className="fa-solid fa-chart-line"></i> Admin Dashboard
+                </button>
+              )}
               <button
                 className={`nav-link-btn ${activeView === 'vault' ? 'active' : ''}`}
                 onClick={() => setActiveView('vault')}
