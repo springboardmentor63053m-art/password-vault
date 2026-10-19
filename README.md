@@ -1,27 +1,27 @@
 # 🛡️ SecureVault: Full-Stack Password Vault & Credential Management System
 
 > **Infosys Springboard Java Project — Team 3**  
-> An enterprise-grade, encrypted credential management platform providing secure credential storage, multi-factor authentication, team vault collaboration, audit logging, and security analytics.
+> An encrypted credential management platform for secure credential storage, with authentication and admin reporting implemented; multi-factor authentication, team vault collaboration, and broader audit logging remain future work.
 
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16--alpine-336791?logo=postgresql&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-7--alpine-DC382D?logo=redis&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 ![pgAdmin](https://img.shields.io/badge/pgAdmin-4-336791?logo=postgresql&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Auth%20APIs%20Added-brightgreen)
+![Status](https://img.shields.io/badge/Status-Admin%20Dashboard%20%26%20Vault%20APIs-brightgreen)
 
 ---
 
 ## 📌 Project Overview (Completed Work)
 
-This repository implements **Milestone 1: Project Initialization, System Architecture & Database Foundation**, plus registration and login APIs for Milestone 2:
+SecureVault is a full-stack password vault with a React 18/Vite frontend and a Java 17/Spring Boot backend backed by PostgreSQL. The repository includes the following implemented functionality:
 
-* **Normalized Relational Schema (`database/schema.sql`)**: 20 tables covering authentication, PBKDF2/AES cryptographic metadata, vaults, secure credential sharing, security event logging, notifications, and analytics.
-* **Automated Containerized Infrastructure (`docker-compose.yml`)**: Preconfigured, one-command deployment of **PostgreSQL 16**, **Redis 7** (caching layer), and **pgAdmin 4** (web management GUI).
-* **Automated Database Bootstrapping**: Mounts the schema script directly into PostgreSQL’s initialization hook for zero-config table generation.
-* **Unified Spring Boot Backend (`backend/`)**: High-performance Java 17 / Spring Boot 4 service unifying registration, login, rate limiting, and security filters on port `8080`.
-* **Consolidated React Frontend (`frontend/`)**: Modern React 18 + Vite interface with Navbar, Login, Register, dynamic password strength scoring, and Vault Dashboard.
+* **Authentication and role-based authorization:** registration and login use BCrypt password hashing and signed JWT access tokens. Admin routes require a valid JWT and an active `ROLE_ADMIN` account; user vault routes validate the JWT against the active, non-revoked database session.
+* **Admin Dashboard:** the existing dashboard provides database-backed user, credential, active-session, and unresolved-alert counts; user/role management; aggregate-only vault counts; security-event analytics; sign-in activity; and persistent admin settings.
+* **User credential vault:** authenticated users can list, create, view, update, and delete credentials in their own vault. Secret fields use AES-256-GCM encryption with a server-configured key. The API derives the owner from the authenticated session and does not return secret contents in list or admin aggregate responses.
+* **PostgreSQL schema and migrations:** `database/schema.sql` initializes a new database; Flyway applies the versioned migration in `backend/src/main/resources/db/migration/` to the configured database.
+* **Local services:** Docker Compose defines PostgreSQL 16, Redis 7, pgAdmin 4, and the Spring Boot API. The Redis service is provisioned but is not currently used by application code.
 
----
+Security analytics currently reads `security_events`, but this application has no event-writing path. Activity Logs currently report successful sign-ins recorded in `sessions`; they do not show failed sign-ins or general audit events. Admin monitoring settings are saved in PostgreSQL but do not enable or disable event collection. MFA verification, credential sharing, and audit interceptors are not implemented.
 
 ## 📊 Database Schema & Entity-Relationship Diagram
 
@@ -255,16 +255,19 @@ erDiagram
 
 ## 🛠️ Infrastructure & Service Architecture
 
-The services are managed via `docker-compose.yml`:
+`docker-compose.yml` defines these local development services and host ports:
 
-| Service | Container Name | Image | Port | Credentials / Config |
-| :--- | :--- | :--- | :--- | :--- |
-| **PostgreSQL** | `securevault-postgres` | `postgres:16-alpine` | `5432:5432` | DB: `securevault_db`<br>User: `postgres`<br>Password: `postgrespassword` |
-| **Redis** | `securevault-redis` | `redis:7-alpine` | `6379:6379` | Default Redis cache port |
-| **pgAdmin** | `securevault-pgadmin` | `dpage/pgadmin4:latest` | `5050:80` | Web Login: `admin@securevault.com`<br>Password: `admin` |
-| **Unified Backend API** | `securevault-backend` | Built from `backend/` | `8080:8080` | Auth, Registration, Login & Vault APIs |
+| Service | Container | Host port | Development configuration |
+| :--- | :--- | :--- | :--- |
+| PostgreSQL 16 | `securevault-postgres` | `5432` | Database `securevault_db`; Compose currently supplies user `postgres` and password `postgrespassword`. Development only. |
+| Redis 7 | `securevault-redis` | `6379` | Provisioned without application authentication; currently not used by the backend. |
+| pgAdmin 4 | `securevault-pgadmin` | `5050` | Development login `admin@securevault.com` / `admin`. Development only. |
+| Spring Boot API | `securevault-backend` | `127.0.0.1:8080` | Java 17 application; Compose supplies datasource and JWT environment variables. |
+| Vite frontend | local process | `3000` | Run from `frontend/`; proxies `/api` to `http://localhost:8080`. |
 
----
+The PostgreSQL initialization script runs only when the database volume is first created. It installs the schema and seed data from `database/schema.sql`; the backend also runs the Flyway migration under `backend/src/main/resources/db/migration/` against its configured datasource. The schema script drops and recreates tables, so do not rerun it against a database containing data you need to keep.
+
+The checked-in Compose database and pgAdmin credentials and fallback JWT key are for local development only. Compose does not override the static JWT fallback unless `JWT_SECRET_BASE64` is set, so always provide your own key. Do not use these defaults in a deployment. Configure fresh secrets, database least-privilege credentials, authenticated/private database and Redis access, and TLS at a reverse proxy before deploying. Compose currently publishes PostgreSQL, Redis, and pgAdmin on host interfaces; restrict those ports with firewall/network configuration for any non-local environment.
 
 ## 🚀 How to Run the Project
 
@@ -282,24 +285,33 @@ cd Infosys-Springboard-Java-Team3
 
 ---
 
-### Step 2: Start Containers with Docker Compose
-Set a fresh JWT signing key in your shell before starting. Missing keys and the former public development key are rejected. Generate a key in PowerShell:
+### Step 2: Configure Development Keys and Start Containers
+
+Compose contains a checked-in fallback JWT signing key for development. Override it with a fresh private key, and configure a separate 32-byte key for vault encryption before starting the backend. Keep both stable and private; changing the JWT key invalidates existing tokens, and losing/changing the vault key makes stored secrets unreadable. Never commit either value.
+
+PowerShell example (values remain in this shell session):
 
 ```powershell
-$keyBytes = New-Object byte[] 48
+$jwtBytes = New-Object byte[] 48
 $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-$rng.GetBytes($keyBytes)
+$rng.GetBytes($jwtBytes)
 $rng.Dispose()
-$env:JWT_SECRET_BASE64 = [Convert]::ToBase64String($keyBytes)
+$env:JWT_SECRET_BASE64 = [Convert]::ToBase64String($jwtBytes)
+
+$vaultBytes = New-Object byte[] 32
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($vaultBytes)
+$rng.Dispose()
+$env:VAULT_ENCRYPTION_KEY_BASE64 = [Convert]::ToBase64String($vaultBytes)
 ```
 
-Keep the key stable across restarts using your deployment secret manager; changing it invalidates existing JWT signatures. Do not commit it. Ensure Docker Desktop is open and run:
+Set these environment variables again in each new shell (or load them securely from a local ignored environment file/secret manager). Then start Docker Desktop and run:
+
 ```bash
 docker compose up --build -d
 ```
-> **Note:** On first startup, Docker will pull the base images, build the unified Java backend service, and execute `database/schema.sql` to create the tables and seed default data. The backend waits for PostgreSQL to become healthy.
 
----
+On first startup with a new database volume, PostgreSQL initializes from `database/schema.sql`. The backend waits for PostgreSQL health and applies its Flyway migration to the configured datasource. Subsequent starts reuse the existing volume.
 
 ### Step 3: Verify Running Services
 Check that the containers are running:
@@ -314,82 +326,79 @@ docker exec -it securevault-postgres psql -U postgres -d securevault_db -c "\dt"
 
 ---
 
-### Step 4: Test Registration and Login with Thunder Client
+### Step 4: Configure Secrets and Test Authentication
 
-Use Thunder Client or curl and send JSON requests with `Content-Type: application/json`.
+Step 2 exports both keys for the current shell. For non-Compose backend runs, provide the same variables directly to the backend process or its secret manager.
 
-**Register a user**
+`VAULT_ENCRYPTION_KEY_BASE64` is required for credential encryption and decryption. The application rejects a missing or invalid vault key when a secret operation is attempted. Supply it through a deployment secret manager in hosted environments. `JWT_SECRET_BASE64` must also be replaced with a private key for any deployment. Compose and `application.properties` include development defaults; do not treat those defaults as secure production configuration.
 
-- Method: `POST`
-- URL: `http://localhost:8080/api/registration/register`
-- Body:
+With the services running, use their API as described below. To run the backend outside Compose, use Java 17 and Maven from `backend/`; `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET_BASE64`, `JWT_EXPIRATION_SECONDS`, and `VAULT_ENCRYPTION_KEY_BASE64` configure it. Defaults are declared in `backend/src/main/resources/application.properties` and are for local development only. The JWT lifetime defaults to 900 seconds and is limited to 1–3600 seconds.
 
-```json
-{
-    "username": "vaultuser",
-    "email": "vaultuser@example.com",
-    "password": "Password123!"
-}
-```
+Registration and login can be exercised with Thunder Client or curl using JSON and `Content-Type: application/json`:
 
-Expected: `202 Accepted` with the same generic acknowledgement for new and duplicate accounts. No account identifiers are returned. Passwords are stored as BCrypt hashes.
-
-**Log in**
-
-- Method: `POST`
-- URL: `http://localhost:8080/api/login`
-- Body:
+**Register** — `POST http://localhost:8080/api/registration/register`
 
 ```json
 {
-    "identifier": "vaultuser@example.com",
-    "password": "Password123!"
+  "username": "vaultuser",
+  "email": "vaultuser@example.com",
+  "password": "Password123!"
 }
 ```
 
-`identifier` accepts either the registered username or email. Expected: `200 OK` with a 15-minute JWT access token and user summary. A SHA-256 fingerprint of each login token is recorded in the `sessions` table, rather than the bearer token itself. Five consecutive failed passwords lock the account for 15 minutes; a successful login clears the counter.
+The endpoint returns `202 Accepted` with a generic acknowledgement; passwords are stored as BCrypt hashes.
 
-Invalid registration input returns `400 Bad Request`. Invalid, inactive, locked, and MFA-enabled logins return the same `401 Unauthorized` response. Nonexistent accounts receive a dummy BCrypt check to reduce timing differences. Expired lockouts start a fresh failure count. MFA-enabled accounts cannot sign in until a second-factor verification flow is implemented; no password-only token is issued.
+**Log in** — `POST http://localhost:8080/api/login`
 
-The backend service returns `Cache-Control: no-store`. It limits login to 30 requests per minute per caller address, registration to 15, with up to sixteen concurrent authentication requests. There is no global per-minute quota that one client can exhaust for everyone. Excess requests return `429` with `Retry-After: 60`. Limits reset on process restart and are not shared across replicas. Behind a reverse proxy, callers share the proxy address limit; configure a shared gateway limiter for production rather than trusting arbitrary forwarding headers. Account lockout can still be deliberately triggered by attackers; throttling reduces this risk but does not eliminate distributed attacks.
+```json
+{
+  "identifier": "vaultuser@example.com",
+  "password": "Password123!"
+}
+```
 
-Compose binds the backend port to `127.0.0.1:8080` for local testing. Remote access requires an HTTPS reverse proxy with direct HTTP ports blocked. Localhost binding does not itself provide TLS; do not expose these services directly over HTTP.
+`identifier` accepts the username or email. A successful response contains a JWT access token and user summary. The database stores a SHA-256 token fingerprint in `sessions`, not the bearer token. Registration validation errors return `400`; invalid, inactive, locked, and MFA-enabled logins return `401`. Five consecutive failed password attempts lock an account for 15 minutes. MFA-enabled accounts cannot complete sign-in because second-factor verification is not implemented. The health endpoints are `GET /api/health` and `GET /api/login/health`.
 
-Database configuration and schema were intentionally left unchanged. Before remote deployment, rotate the committed PostgreSQL and pgAdmin credentials, restrict their published ports, and replace the auth services' PostgreSQL superuser access with least-privilege database roles. Redis also has a published unauthenticated port. The existing `mfa_enabled`, lockout, and session columns support these auth fixes without a schema migration. The query using `lower(username)` / `lower(email)` would benefit from matching functional indexes as the users table grows. Existing case-sensitive unique constraints do not prevent case-variant accounts inserted outside registration; consider case-insensitive uniqueness after checking existing data.
+### API Endpoints
 
-Passwords must fit within BCrypt's 72-byte UTF-8 limit, in addition to the character limits. Requests over 8 KiB return `413` even with chunked encoding; invalid JSON and validation errors receive generic `400` responses without rejected passwords. Slow body uploads receive `408`; the elapsed-time guard works alongside the connector read timeout. Credential request records and token responses redact diagnostic string output, and Spring web logging defaults to INFO to avoid rejected-value debug logs. Multipart uploads are disabled. JWT lifetimes must be between 1 and 3600 seconds (default 900).
+All paths below use `http://localhost:8080` in the local setup. The Vite development server proxies these paths from port 3000.
 
-The backend uses Spring Boot 4.0.8, Tomcat 11.0.27, and Java 17; token handling uses JJWT 0.12.7. These upgrades replace the original Tomcat version affected by resource-exhaustion advisories ([Tomcat advisories](https://tomcat.apache.org/security-10.html), [Boot 4 migration guide](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide)). Containers run as UID/GID 10001 with a read-only filesystem, dropped capabilities, no privilege escalation, and writable temporary storage. Docker builds run regression tests. Direct Java launches bind to localhost by default; Compose sets the internal container bind address while keeping host ports on localhost.
+| Method | Endpoint | Access and behavior |
+| :--- | :--- | :--- |
+| `POST` | `/api/registration/register` | Public registration. |
+| `POST` | `/api/login` | Public login; issues JWT and records a session fingerprint. |
+| `GET` | `/api/health` or `/api/login/health` | Public health response. |
+| `GET` | `/api/vault/credentials` | Valid JWT plus active session; list the current user's credential metadata, without secrets. |
+| `POST` | `/api/vault/credentials` | Valid JWT plus active session; create an owned credential. |
+| `GET` | `/api/vault/credentials/{credentialId}` | Valid JWT plus active session and ownership; retrieve one credential including decrypted secret. |
+| `PUT` | `/api/vault/credentials/{credentialId}` | Valid JWT plus active session and ownership; update an owned credential. |
+| `DELETE` | `/api/vault/credentials/{credentialId}` | Valid JWT plus active session and ownership; delete an owned credential. |
+| `GET` | `/api/admin/dashboard/statistics` | Valid JWT and active administrator; aggregate dashboard counts. |
+| `GET` | `/api/admin/users` | Valid JWT and active administrator; user summaries and roles. |
+| `GET` | `/api/admin/roles` | Valid JWT and active administrator; roles available for assignment. |
+| `POST` | `/api/admin/users/{userId}/role` | Valid JWT and active administrator; assign an allowed elevated role. |
+| `GET` | `/api/admin/vault/statistics` | Valid JWT and active administrator; aggregate counts only, no credential contents. |
+| `GET` | `/api/admin/analytics/security-events` | Valid JWT and active administrator; daily event counts from `security_events`. No event writer currently populates this table through the app. |
+| `GET` | `/api/admin/activity-logs` | Valid JWT and active administrator; recent successful sign-ins from `sessions`. |
+| `GET`, `PUT` | `/api/admin/settings` | Valid JWT and active administrator; read and persist monitoring preference flags. The flags do not currently control collection. |
 
-`.gitignore` and service `.dockerignore` files exclude environment secrets, private keys, and build output. They do not remove secrets already committed in Git history; rotate exposed secrets rather than relying on ignore rules.
+The admin authorization filter validates JWT signatures/expiry and checks that the account is active and currently has `ROLE_ADMIN`. Vault requests additionally require a matching active, non-revoked session. Do not send credential secrets to admin endpoints; aggregate endpoints do not select or return them.
 
-Run regression tests with `mvn test` from the `backend/` directory (Java 17 and Maven required). JWT issuance and the JSON endpoints are implemented here; protected vault APIs, JWT consumption/revocation enforcement, and complete MFA verification are future work, so they cannot be certified by this review.
+Authentication endpoints apply in-memory per-address rate limits. Those limits reset on process restart and are not shared across replicas. Behind a proxy, configure rate limiting at a trusted gateway; the app does not trust arbitrary forwarding headers. Account lockout can still be deliberately triggered. Requests are bounded to 8 KiB; multipart uploads are disabled. Do not expose the Compose-published HTTP services directly to the internet. Use an HTTPS reverse proxy, block direct service ports, replace development credentials, and use least-privilege database users in deployment.
 
-The backend health endpoint is `GET http://localhost:8080/api/health` (or `http://localhost:8080/api/login/health`).
+Run backend tests with `mvn -q test` from `backend/` (Java 17 and Maven required). The Dockerfile builds the application package with tests skipped; run the test command separately for regression coverage.
 
----
+### Step 5: Access pgAdmin (Development Only)
 
-### Step 5: Access pgAdmin (Web GUI)
-1. Open your browser and navigate to: **`http://localhost:5050`**
-2. Sign in with:
-   * **Email:** `admin@securevault.com`
-   * **Password:** `admin`
-3. Connect to the database:
-   * Right-click **Servers** ➔ **Register** ➔ **Server...**
-   * **General Tab:** Name: `SecureVault`
-   * **Connection Tab:**
-     * **Host name/address:** `postgres` *(internal Docker network service name)*
-     * **Port:** `5432`
-     * **Maintenance database:** `securevault_db`
-     * **Username:** `postgres`
-     * **Password:** `postgrespassword`
-   * Click **Save**.
-4. Browse to **Servers** ➔ **SecureVault** ➔ **Databases** ➔ **securevault_db** ➔ **Schemas** ➔ **public** ➔ **Tables** to view and query tables interactively.
+1. Open `http://localhost:5050`.
+2. The Compose development credentials are `admin@securevault.com` / `admin`. Change them before any shared or deployed use.
+3. Register a server with host `postgres`, port `5432`, database `securevault_db`, username `postgres`, and the Compose development password `postgrespassword`.
 
----
+These example credentials are committed in `docker-compose.yml` for local development and are not deployment secrets. For deployment, configure a unique pgAdmin login and a least-privilege database account through protected environment/secret configuration; do not expose pgAdmin publicly.
 
-### Step 6: Run the Consolidated Frontend (React + Vite)
-The UI combines Login, Registration, and an interactive Vault preview into a unified modern app:
+### Step 6: Run the Frontend (React + Vite)
+
+The supported Vite frontend is in `frontend/`. It renders the login, registration, user vault, and existing Admin Dashboard. Run:
 
 ```bash
 cd frontend
@@ -397,46 +406,37 @@ npm install
 npm run dev
 ```
 
-* Open your browser at **`http://localhost:3000`**
-* The Vite dev server automatically proxies all `/api/*` requests to port `8080` (the unified Spring Boot backend).
-* You can test **Registration** (with dynamic password strength scoring), **Login** (with JWT session storage), and the **Vault Demo** (interactive password generator and encrypted credentials manager).
-
----
+Open `http://localhost:3000`. Vite proxies `/api/*` to the Spring Boot service at port `8080`. Keep the backend running and use a JWT from login; admin pages require an active administrator account. The vault credential API requires `VAULT_ENCRYPTION_KEY_BASE64` to be configured in the backend environment.
 
 ## 📂 Project Structure
 
 ```text
-Infosys-Springboard-Java-Team3/
-├── frontend/                  # Consolidated React 18 + Vite Frontend Application (port 3000)
-│   ├── src/
-│   │   ├── components/        # Login, Register, VaultDashboard, Navbar
-│   │   ├── services/          # API service client
-│   │   ├── App.jsx            # Unified view router
-│   │   ├── App.css            # Component styles & dashboard layout
-│   │   └── index.css          # Design system tokens & reset
-│   ├── public/                # Favicon and provider brand assets
-│   ├── vite.config.js         # API proxy configuration (proxies /api to port 8080)
-│   └── package.json           # Frontend dependencies
-├── backend/                   # Consolidated Spring Boot Backend Service (port 8080)
-│   ├── src/
-│   │   ├── main/java/com/securevault/
-│   │   │   ├── auth/          # AuthController, LoginService, RegistrationService
-│   │   │   ├── common/        # RateLimitFilter, BcryptPasswordLength, GlobalExceptionHandler
-│   │   │   └── SecureVaultApplication.java
-│   │   └── resources/         # application.properties
-│   ├── Dockerfile             # Multi-stage container build
-│   └── pom.xml                # Maven dependencies
-├── database/
-│   └── schema.sql             # PostgreSQL DDL with extensions, tables, indexes, and seed data
-├── docs/                      # Documentation & Project Assets
-│   ├── schema.md              # Detailed schema design documentation & ER diagram
-│   ├── work_tracker.md        # Milestones, feature status & work tracker
-│   └── Java_Integrated Password Vault...pdf # Project specifications and syllabus
-├── docker-compose.yml          # Multi-container orchestration (PostgreSQL, Redis, pgAdmin, Backend)
-└── README.md                   # Project setup, execution guide, and architecture
+password-vault/
+├── frontend/                         # React 18 + Vite app (port 3000)
+│   ├── src/components/               # Login, Register, Navbar, VaultDashboard
+│   ├── src/services/api.js           # Stored authentication helpers
+│   ├── src/App.jsx                   # App shell and route/view selection
+│   ├── src/main.jsx                  # Vite entry point
+│   └── vite.config.js                # /api proxy to localhost:8080
+├── src/                              # Existing Admin Dashboard implementation
+│   └── App.js                        # Dashboard, users, vault stats, analytics, logs, settings
+├── backend/
+│   ├── src/main/java/com/securevault/
+│   │   ├── admin/                    # AdminDashboardController and database service
+│   │   ├── auth/                     # Registration, login, JWT/session creation
+│   │   ├── vault/                    # Credential CRUD service/controller and AES-GCM encryption
+│   │   ├── common/                   # Admin/session authorization filters, errors, rate limits
+│   │   └── SecureVaultApplication.java
+│   ├── src/main/resources/
+│   │   ├── application.properties    # Port and environment-backed configuration
+│   │   └── db/migration/             # Flyway migrations (including admin settings)
+│   ├── src/test/java/com/securevault/ # Auth, authorization, admin, vault, encryption tests
+│   ├── Dockerfile
+│   └── pom.xml
+├── database/schema.sql               # PostgreSQL schema and seed data for fresh volumes
+├── docker-compose.yml                # PostgreSQL, Redis, pgAdmin, backend services
+└── README.md
 ```
-
----
 
 ## 📦 Database Tables Overview
 
@@ -445,8 +445,8 @@ Infosys-Springboard-Java-Team3/
 | **Authentication & Access Control** | `users`, `roles`, `user_roles`, `sessions`, `devices` | User management, RBAC, session tokens, and trusted device tracking. |
 | **Vault & Credential Storage** | `vaults`, `vault_members`, `folders`, `categories`, `credentials`, `tags`, `tag_mappings`, `attachments` | Hierarchical encrypted item storage, categories, and file attachments. |
 | **Secure Sharing** | `sharing` | Granular item sharing with permission tiers and expiration dates. |
-| **Security & Audit Monitoring** | `audit_logs`, `security_events`, `blocked_ips`, `notifications` | Immutable audit trails, anomaly risk scores, IP blocking, and user alerts. |
-| **Analytics Dashboard** | `password_health`, `login_stats` | User security posture scoring and daily login telemetry. |
+| **Security & Audit Monitoring** | `audit_logs`, `security_events`, `blocked_ips`, `notifications` | Schema support for audit/event records, IP blocking, and alerts; app event-writing/collection paths remain incomplete. |
+| **Analytics Dashboard** | `password_health`, `login_stats`, `admin_settings` | Admin monitoring preferences persist in `admin_settings`; password health and login-stat tables are schema foundations. |
 
 ### Pre-seeded Data
 * **User Roles:** `ROLE_USER`, `ROLE_TEAM_MEMBER`, `ROLE_ADMIN`
@@ -466,9 +466,10 @@ docker compose down
 
 ## 🗺️ Roadmap & Next Steps
 
-- [x] **Milestone 1:** Database Schema Design, Normalization & Docker Setup
-- [x] **Milestone 2:** Spring Boot registration and login microservices (BCrypt + JWT + PostgreSQL)
-- [ ] **Milestone 3:** Encryption Service (AES-256-GCM + PBKDF2 Key Derivation) & Credential CRUD APIs
-- [ ] **Milestone 4:** Secure Sharing Service & Audit Logging Interceptors
-- [x] **Milestone 5:** Consolidated React.js + Vite Frontend (Login, Registration & Vault Dashboard)
+- [x] **Milestone 1:** PostgreSQL schema foundation and Docker Compose setup
+- [x] **Milestone 2:** Registration and login APIs with BCrypt, JWT, and PostgreSQL sessions
+- [x] **Milestone 3 (implemented scope):** AES-256-GCM server-side credential encryption and per-user credential CRUD APIs. PBKDF2 key derivation is not implemented; the encryption key is supplied through `VAULT_ENCRYPTION_KEY_BASE64`.
+- [x] **Admin Dashboard implementation:** role-protected dashboard statistics, user management/role assignment, aggregate vault statistics, security analytics endpoint, successful-sign-in activity logs, and persistent settings.
+- [x] **Milestone 5:** React + Vite login, registration, user vault, and Admin Dashboard UI.
+- [ ] **Future work:** MFA verification; secure sharing; audit/event-writing and monitoring behavior; make persisted monitoring preferences control collection; expand activity logs to include failed sign-ins and other audit events; password health and login telemetry; production secret/credential management and deployment hardening.
 
