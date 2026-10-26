@@ -1,0 +1,100 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: securevault-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: securevault_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting Compose}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d securevault_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Applies the repeatable schema and provisions the least-privilege app role.
+  db-bootstrap:
+    image: postgres:16-alpine
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting Compose}
+      SECUREVAULT_DB_APP_PASSWORD: ${SECUREVAULT_DB_APP_PASSWORD:?Set SECUREVAULT_DB_APP_PASSWORD before starting Compose}
+    volumes:
+      - ./database/bootstrap-app-user.sql:/bootstrap/app-user.sql:ro
+      - ./database/schema.sql:/bootstrap/schema.sql:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command: |
+      psql -h postgres -U postgres -d securevault_db -v ON_ERROR_STOP=1 -f /bootstrap/app-user.sql
+      psql -h postgres -U postgres -d securevault_db -v ON_ERROR_STOP=1 -f /bootstrap/schema.sql
+
+  # Unified Spring Boot Backend Service (Auth, Admin Dashboard API & Vault foundations)
+  backend:
+    build: ./backend
+    container_name: securevault-backend
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/securevault_db
+      SPRING_DATASOURCE_USERNAME: securevault_app
+      SPRING_DATASOURCE_PASSWORD: ${SECUREVAULT_DB_APP_PASSWORD:?Set SECUREVAULT_DB_APP_PASSWORD before starting Compose}
+      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:?Set JWT_SECRET_BASE64 before starting Compose}
+      MFA_ENCRYPTION_KEY_BASE64: ${MFA_ENCRYPTION_KEY_BASE64:-${JWT_SECRET_BASE64:?Set JWT_SECRET_BASE64 before starting Compose}}
+      JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-900}
+      SECUREVAULT_TRUSTED_PROXY_CIDRS: ${SECUREVAULT_TRUSTED_PROXY_CIDRS:-}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:-true}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:-true}
+      SECUREVAULT_MAIL_FROM: ${SECUREVAULT_MAIL_FROM:-}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      db-bootstrap:
+        condition: service_completed_successfully
+
+  # Redis Cache (Specified in Project Tech Stack)
+  redis:
+    profiles: ["tools"]
+    image: redis:7-alpine
+    container_name: securevault-redis
+    restart: always
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # pgAdmin (Optional Web-based Database GUI)
+  pgadmin:
+    profiles: ["tools"]
+    image: dpage/pgadmin4:latest
+    container_name: securevault-pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.invalid}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-}
+    ports:
+      - "127.0.0.1:5050:80"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,228 +1,194 @@
-# SecureVault Authentication Services
+# SecureVault
 
-Authentication contribution for the **SecureVault Password Vault and Secure Credential Sharing Management System**.
+SecureVault is an Infosys Springboard Team 3 project for account authentication, security monitoring, and password-vault workflows. The repository currently contains a Spring Boot API, a user-facing React app, and a separate administrator console.
 
-- **Team:** TEAM-3
-- **Contribution branch:** `3-RABISHANKAR`
-- **Scope:** user registration, password-based login, JWT access-token issuance, and authentication security checks.
+## Current implementation
 
-## Implemented work
+### User authentication
 
-- Independent registration and login services backed by PostgreSQL.
-- BCrypt password hashing and a random per-user vault-key salt.
-- Default `ROLE_USER` assignment during registration.
-- Login using either a username or an email address.
-- Signed JWT access tokens with a configurable lifetime, defaulting to 15 minutes.
-- Session records containing a SHA-256 token fingerprint rather than the bearer token.
-- Account lockout after five failed passwords, with a 15-minute lockout and a fresh failure count after expiry.
-- Input validation, request limits, safe error responses, and regression tests.
+- Registration creates regular user accounts; a request cannot choose its own administrator role.
+- Login accepts a username or email address and checks BCrypt password hashes.
+- Authentication includes account lockout, request throttling, bounded request bodies, input validation, opaque registration responses, and consistent error handling.
+- Successful sessions and device observations are recorded. Client IP resolution supports trusted proxy CIDRs configured by the operator.
+- Logout revokes the active session.
 
-The vault-key salt is metadata for future vault encryption; this branch does not implement vault encryption or credential storage APIs.
+### Multi-factor authentication
 
-## Technology
+- Users and administrators can enroll in an authenticator from the user dashboard’s **Multi-factor authentication** panel or the admin console’s **Account security** page.
+- Enrollment checks the current account password and requires a six-digit TOTP code before it is enabled.
+- The setup view displays a locally generated QR code, an `otpauth://` link, and a manual setup key. The QR is generated in the browser; the seed is not sent to a QR service.
+- TOTP seeds are encrypted before storage. `MFA_ENCRYPTION_KEY_BASE64` should be set to a dedicated random key and kept stable after enrollment. If it is omitted, the backend currently falls back to `JWT_SECRET_BASE64`.
+- When an account has authenticator MFA enabled, it is required at each sign-in. Without authenticator MFA, a sign-in from a new device, a new IP, or an unusual time may require a six-digit email code.
+- Email challenges use SMTP. For Gmail, configure the host, port, sender/user, and an app password in the ignored local `.env` file. No Google OAuth/API credentials are needed for TOTP.
 
-| Component | Version or purpose |
-| --- | --- |
-| Java | 17 |
-| Spring Boot | 4.0.8 |
-| Embedded Tomcat | 11.0.27 |
-| Spring JDBC | Parameterized database queries and transactions |
-| Spring Security Crypto | BCrypt password hashing |
-| JJWT | 0.12.7 |
-| PostgreSQL | Shared application database |
-| Maven | Build, tests, and executable JAR packaging |
-| Docker | Separate multi-stage builds for each service |
+### Administrator console
 
-## Branch contents
+The root React/Vite application provides:
 
-```text
-auth-services/
-  registration-service/
-    Dockerfile
-    pom.xml
-    src/main/java/com/securevault/registration/
-    src/main/resources/application.properties
-    src/test/java/com/securevault/registration/
-  login-service/
-    Dockerfile
-    pom.xml
-    src/main/java/com/securevault/login/
-    src/main/resources/application.properties
-    src/test/java/com/securevault/login/
-.gitignore
-README.md
-```
+- Overview metrics and service status.
+- User search, account details, role management, account enable/disable, device/session review, and device revocation.
+- Administrator role changes require the acting administrator’s password and are recorded in the audit trail.
+- Threat analysis for login outcomes, IP/device changes, repeated failures, unusual login times, password-health metadata, suspicious vault activity, alert severity/status, and the overall security score.
+- Paginated and searchable audit records.
+- **CSV** and **Excel `.xlsx`** audit exports for the current search, up to 50,000 matching records. Export files include event ID, account, email, action, source IP, timestamp, result, and details. CSV fields are escaped and guarded against spreadsheet formula injection.
+- Vault metadata totals. Credential contents are not returned to the admin API.
 
-The shared database schema and Docker Compose configuration are maintained on [TEAM-3](https://github.com/springboardmentor63053m-art/password-vault/tree/TEAM-3). They are not included in this contribution branch. Database configuration and schema were left unchanged by this auth-service contribution.
+### User-facing vault screen
 
-## Local setup
+The user frontend includes registration, login, account MFA settings, a vault dashboard, a password generator, and sample credential rows. The current vault rows are demo data held in browser memory. Encrypted credential CRUD, synchronization, and secure sharing APIs are not implemented yet; do not store real credentials in the demo screen.
 
-### 1. Prerequisites
+## Services and ports
 
-- Java 17 and Maven available in the terminal.
-- A running PostgreSQL instance initialized with the [TEAM-3 schema](https://github.com/springboardmentor63053m-art/password-vault/blob/TEAM-3/database/schema.sql).
-- The schema's `users`, `roles`, `user_roles`, and `sessions` tables, including the seeded `ROLE_USER` role.
+| Service | Location | Local address | Purpose |
+| --- | --- | --- | --- |
+| PostgreSQL 16 | Docker Compose | `localhost:5432` | Persistent application database |
+| Spring Boot API | `backend/` | `localhost:8080` | Authentication, MFA, admin APIs, and health check |
+| User app | `frontend/` | `localhost:3000` | Registration, login, and demo vault |
+| Admin console | repository root | `localhost:3001` | Admin dashboard and security tools |
+| Redis 7 | Compose `tools` profile | `localhost:6379` | Optional development service; not required for the current API |
+| pgAdmin 4 | Compose `tools` profile | `localhost:5050` | Optional database administration UI |
 
-SQL initialization is disabled in both services; starting them does not create tables. Use the shared TEAM-3 database setup before testing registration or login.
+The user and admin Vite servers proxy `/api` to the backend. Compose binds the API and database ports to loopback for local development.
+
+## Requirements
+
+- Docker Desktop with Docker Compose.
+- Java 17 and Maven to run backend checks outside Docker.
+- Node.js and npm to run the Vite applications.
+
+## Configure local secrets
+
+Copy the example file, then replace the database and key placeholders with unique random values. `.env` is ignored by Git and must not be committed.
 
 ```powershell
-git clone --branch 3-RABISHANKAR --single-branch https://github.com/springboardmentor63053m-art/password-vault.git
-cd password-vault
+Copy-Item .env.example .env
 ```
 
-### 2. Configure the database connection
-
-Open two PowerShell terminals at the repository root. Set these variables in **each terminal**, replacing the placeholders with the credentials of your existing database:
+Generate base64 key material in PowerShell (run separately for each key):
 
 ```powershell
-$env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:5432/securevault_db"
-$env:SPRING_DATASOURCE_USERNAME = "<database-user>"
-$env:SPRING_DATASOURCE_PASSWORD = "<database-password>"
-```
-
-### 3. Run registration
-
-In the first terminal:
-
-```powershell
-mvn -f auth-services/registration-service/pom.xml spring-boot:run
-```
-
-Registration listens at `http://localhost:8081`.
-
-### 4. Configure and run login
-
-In the second terminal, generate a signing key for local testing and start login:
-
-```powershell
-$keyBytes = New-Object byte[] 48
+$bytes = New-Object byte[] 48
 $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-$rng.GetBytes($keyBytes)
+$rng.GetBytes($bytes)
+[Convert]::ToBase64String($bytes)
 $rng.Dispose()
-$env:JWT_SECRET_BASE64 = [Convert]::ToBase64String($keyBytes)
-$env:JWT_EXPIRATION_SECONDS = "900"
-
-mvn -f auth-services/login-service/pom.xml spring-boot:run
 ```
 
-Login listens at `http://localhost:8082`. A signing key is required; missing, invalid, too-short, or the former public development key prevents login-service startup. Keep your own random key stable across restarts through your deployment's secret configuration. Generating a new key invalidates verification of existing tokens against that key. Do not commit signing keys or real database credentials.
+Use distinct values for `POSTGRES_PASSWORD`, `SECUREVAULT_DB_APP_PASSWORD`, `JWT_SECRET_BASE64`, and `MFA_ENCRYPTION_KEY_BASE64`. Keep JWT and MFA encryption keys stable: rotating them invalidates sessions or prevents existing authenticator seeds from decrypting.
 
-### Environment variables
+For Gmail email challenges, enable 2-Step Verification and create a Gmail app password. Set `SPRING_MAIL_USERNAME` and `SECUREVAULT_MAIL_FROM` to the sender account, `SPRING_MAIL_PASSWORD` to the app password, and keep SMTP authentication and STARTTLS enabled. Never place a real password in documentation or commit it.
 
-| Variable | Purpose |
-| --- | --- |
-| `SPRING_DATASOURCE_URL` | JDBC URL for the existing database |
-| `SPRING_DATASOURCE_USERNAME` | Database username |
-| `SPRING_DATASOURCE_PASSWORD` | Database password |
-| `JWT_SECRET_BASE64` | Required login-service signing key; Base64-encoded random bytes, at least 32 bytes before encoding |
-| `JWT_EXPIRATION_SECONDS` | Login token lifetime: 1–3600 seconds; default `900` |
-| `SERVER_ADDRESS` | Bind address; default `127.0.0.1` |
+If SecureVault runs behind a reverse proxy, set `SECUREVAULT_TRUSTED_PROXY_CIDRS` only to the proxy address ranges that you control. Leave it empty for direct local access.
 
-For the integrated Docker environment, use [TEAM-3's Compose setup](https://github.com/springboardmentor63053m-art/password-vault/blob/TEAM-3/docker-compose.yml) and its README. Each service's Dockerfile runs tests during the image build and runs the application as a non-root user.
+## Start the application
 
-## API examples
-
-Use Thunder Client, Postman, or another HTTP client with `Content-Type: application/json`.
-
-### Register a user
-
-`POST http://localhost:8081/api/registration/register`
-
-```json
-{
-  "username": "vaultuser",
-  "email": "vaultuser@example.com",
-  "password": "VaultPassword123!"
-}
-```
-
-Username: 3–50 characters, using letters, numbers, dots, underscores, or hyphens. Email: valid format, up to 255 characters. Password: 12–72 Java characters and at most **72 UTF-8 bytes**; non-ASCII characters can consume more than one byte each. Usernames and emails are stored in lowercase.
-
-New and duplicate accounts receive the same `202 Accepted` acknowledgement to reduce account enumeration:
-
-```json
-{
-  "code": "REQUEST_RECEIVED",
-  "message": "If these details are available, your account has been created."
-}
-```
-
-### Log in
-
-`POST http://localhost:8082/api/login`
-
-```json
-{
-  "identifier": "vaultuser@example.com",
-  "password": "VaultPassword123!"
-}
-```
-
-`identifier` accepts the registered username or email. A successful `200 OK` response contains:
-
-- `accessToken`: signed JWT.
-- `tokenType`: `Bearer`.
-- `expiresAt`: UTC expiration timestamp.
-- `user`: ID, username, and email.
-
-Invalid, inactive, locked, and MFA-enabled accounts receive a generic `401 Unauthorized` response. This branch does not yet implement second-factor verification, so MFA-enabled accounts cannot receive password-only access tokens.
-
-### Health check
-
-`GET http://localhost:8082/api/login/health`
-
-```json
-{
-  "status": "UP",
-  "service": "login-service"
-}
-```
-
-This checks that the login application responds; it does not verify database connectivity.
-
-### Response status reference
-
-| Status | Meaning |
-| --- | --- |
-| `200` | Login succeeded, or health endpoint responded |
-| `202` | Registration acknowledged; account existence is not disclosed |
-| `400` | Invalid fields or malformed JSON |
-| `401` | Login denied with a generic credential error |
-| `408` | Request body took too long to read |
-| `413` | Request body exceeds 8 KiB |
-| `429` | Caller rate limit or concurrent-work limit reached; includes `Retry-After` |
-
-## Security measures and limits
-
-- Parameterized SQL queries and transactional account/session updates.
-- Dummy BCrypt checks for unknown, inactive, and locked accounts to reduce timing differences.
-- Per-process caller limits: 30 login POSTs/minute and 10 registration POSTs/minute, with at most eight POST requests in progress per service. Limits apply to POST requests handled by each service, including invalid routes.
-- Bounded 8 KiB POST bodies, including chunked requests, and elapsed-time checks during body reads alongside a connector read timeout.
-- No multipart uploads; forwarded client-address headers are not trusted.
-- `Cache-Control: no-store`, frame protection, and content-type sniffing protection.
-- Redacted credential/token diagnostic strings and generic validation errors. Web logging defaults to INFO to avoid exposing rejected values through DEBUG/TRACE output.
-- Localhost binding by default, non-root Docker users, and ignore rules for local secrets and build artifacts.
-
-Limits are local to each running process and reset on restart. A reverse proxy shares its address across callers unless a trusted gateway enforces client-aware limits. Distributed attackers can still trigger account lockouts. Remote deployment requires HTTPS and deployment-level access controls; localhost HTTP examples are for local testing.
-
-## Build and test
-
-From the repository root:
+From the repository root, after configuring `.env`:
 
 ```powershell
-mvn -f auth-services/registration-service/pom.xml package
-mvn -f auth-services/login-service/pom.xml package
+docker compose up --build -d
+docker compose ps
 ```
 
-`package` compiles the services, runs tests, and creates executable JARs under each service's `target/` directory. For tests only, replace `package` with `test`.
+Compose starts PostgreSQL, runs the database bootstrap/schema service, then starts the backend. Check the API:
 
-**Verified on the contributed auth-service code:** 34 tests passed: 14 registration tests and 20 login tests. Both executable JARs packaged successfully. Tests cover application-context startup, JSON endpoints, password byte boundaries, generic duplicate responses, safe error output, MFA blocking, lockout expiry, JWT key/lifetime validation, and request limits. Database access is mocked in these tests; this is not a live database integration test. Docker container runtime verification was not performed.
+```powershell
+Invoke-RestMethod http://localhost:8080/api/health
+```
 
-## Remaining work
+Start the user frontend in a separate terminal:
 
-- Second-factor challenge and verification for MFA-enabled accounts.
-- Protected-resource JWT verification and session revocation enforcement; this branch currently issues tokens only.
-- Vault encryption, credential CRUD, sharing, and the frontend.
-- Shared gateway throttling and HTTPS configuration for deployed environments.
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
 
-The shared database and infrastructure security findings remain outside this branch's changes. See the TEAM-3 documentation for the integrated project configuration.
+Open `http://localhost:3000`.
+
+Start the administrator console from the repository root in another terminal:
+
+```powershell
+npm ci
+npm run dev
+```
+
+Open `http://localhost:3001`.
+
+### Create the first administrator
+
+Registration always creates a regular user. For the initial administrator only, register an account in the user app and grant it `ROLE_ADMIN` using the database administrator connection:
+
+```powershell
+docker compose exec postgres psql -U postgres -d securevault_db
+```
+
+At the `psql` prompt, replace the email with the registered account:
+
+```sql
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id
+FROM users u CROSS JOIN roles r
+WHERE lower(u.email) = lower('admin@example.com')
+  AND r.role_name = 'ROLE_ADMIN'
+ON CONFLICT DO NOTHING;
+```
+
+After this bootstrap, existing administrators can promote or demote other accounts from **Users & roles** by confirming their own password. Those changes are audited.
+
+## API overview
+
+- `POST /api/registration/register` — register a regular account.
+- `POST /api/login` — password authentication; may return an MFA challenge.
+- `POST /api/login/mfa` — complete a TOTP or email-code challenge.
+- `POST /api/logout` — revoke the current session.
+- `GET /api/health` — backend and database health.
+- `/api/account/mfa` — authenticated MFA status, TOTP setup, confirmation, and disable endpoints.
+- `/api/admin/*` — administrator identity, dashboard, users/roles, activities, analytics, vault overview, and system settings. Requests require an active administrator session.
+
+## Database and infrastructure
+
+- `database/schema.sql` defines the PostgreSQL application schema, including users/roles, sessions/devices, audit logs, security events, password-health aggregates, and vault metadata.
+- `database/bootstrap-app-user.sql` provisions the restricted `securevault_app` role used by the Compose backend.
+- `docker-compose.yml` uses a read-only backend container, dropped Linux capabilities, and `no-new-privileges`.
+- Redis and pgAdmin are optional services under the Compose `tools` profile.
+- See [docs/schema.md](docs/schema.md) for the ER diagram and schema notes.
+
+## Threat analysis and known limits
+
+Threat signals are generated from authentication and recorded security events. Password-health reporting consumes metadata/aggregate rows; it does not inspect a user’s plaintext passwords, and no breach-check provider is connected. The current demo vault does not call vault APIs, so live credential-access events are not yet produced by that screen. Redis is provisioned as an optional service but is not the current session/rate-limit store.
+
+Authenticator MFA is opt-in per account. There is no recovery-code workflow yet, so users should keep access to their authenticator device and email account. Configure and verify SMTP before relying on email challenges.
+
+## Development checks
+
+Run the backend tests:
+
+```powershell
+cd backend
+mvn test
+```
+
+Build the admin console:
+
+```powershell
+npm ci
+npm run build
+```
+
+Build the user app:
+
+```powershell
+cd frontend
+npm ci
+npm run build
+```
+
+## Project files
+
+- `backend/` — Spring Boot controllers, auth/MFA/admin services, security filters, and tests.
+- `database/` — PostgreSQL schema and least-privilege app-user bootstrap SQL.
+- `frontend/` — user registration/login and demo vault app.
+- `src/` — administrator console, MFA settings panel, API client, and audit export generator.
+- `docs/schema.md` — database ERD and schema documentation.
+- `docs/work_tracker.md` — implementation status and follow-up work.
+- `docs/implementation_summary.md` — earlier `3-RABISHANKAR` contributions and the implementation included in this push.
