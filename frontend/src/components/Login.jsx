@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
-import { loginUser } from '../services/api';
+import { completeLoginMfa, loginUser } from '../services/api';
 
 export default function Login({ onLoginSuccess, onNavigateRegister }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null);
+  const [challenge, setChallenge] = useState(null);
+  const [verificationCode, setVerificationCode] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!identifier.trim() || !password) {
+    if (challenge && verificationCode.length !== 6) {
+      setStatusMessage({ type: 'error', text: 'Enter the six-digit verification code.' });
+      return;
+    }
+    if (!challenge && (!identifier.trim() || !password)) {
       setStatusMessage({ type: 'error', text: 'Please enter your username/email and password.' });
       return;
     }
@@ -19,16 +24,28 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
     setLoading(true);
     setStatusMessage(null);
 
-    const result = await loginUser({ identifier, password });
+    const result = challenge
+      ? await completeLoginMfa({ challengeId: challenge.challengeId, code: verificationCode })
+      : await loginUser({ identifier, password });
     setLoading(false);
 
     if (result.success) {
+      if (result.challenge) {
+        setChallenge(result.challenge);
+        setPassword('');
+        setVerificationCode('');
+        setStatusMessage({
+          type: 'info',
+          text: result.challenge.method === 'EMAIL'
+            ? `Enter the six-digit code sent to ${result.challenge.maskedEmail}.`
+            : 'Enter the current six-digit code from your authenticator app.',
+        });
+        return;
+      }
       const user = result.data.user || { username: identifier.split('@')[0], email: identifier };
       setStatusMessage({
         type: 'success',
-        text: result.isDemo
-          ? 'Demo Mode: Authentication successful! Welcome to SecureVault.'
-          : 'Login successful! Redirecting to vault...',
+        text: 'Login successful! Redirecting to the demo vault...',
       });
       setTimeout(() => {
         onLoginSuccess(user);
@@ -44,7 +61,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
   const handleOAuthDemo = (provider) => {
     setStatusMessage({
       type: 'info',
-      text: `${provider} OAuth integration configured for Milestone 4 & 5.`,
+      text: `${provider} sign-in is not connected in this demo.`,
     });
   };
 
@@ -59,7 +76,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
             </div>
             <h2 className="brand-title">SecureVault</h2>
             <p className="brand-subtitle">
-              Enterprise-Grade Credential & Password Management
+              Local Authentication & Vault Demo
             </p>
           </div>
 
@@ -76,11 +93,11 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
           <div className="feature-highlights">
             <div className="feature-item">
               <i className="fa-solid fa-lock"></i>
-              <span>AES-256-GCM Zero-Knowledge</span>
+              <span>Sample credential vault demo</span>
             </div>
             <div className="feature-item">
               <i className="fa-solid fa-key"></i>
-              <span>PBKDF2 Salted Key Derivation</span>
+              <span>Account passwords hashed with BCrypt</span>
             </div>
             <div className="feature-item">
               <i className="fa-solid fa-shield-virus"></i>
@@ -97,8 +114,11 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
         <main className="auth-form-panel">
           <div className="form-content-area">
             <header className="form-header">
-              <h1 className="form-heading">Welcome Back</h1>
-              <p className="form-subheading">Sign in to unlock your secure password vault</p>
+              <h1 className="form-heading">{challenge ? 'Verify it’s you' : 'Welcome Back'}</h1>
+              <p className="form-subheading">{challenge?.method === 'EMAIL'
+                ? `A verification code was sent to ${challenge.maskedEmail}.`
+                : challenge ? 'Enter the current code from your authenticator app.'
+                  : 'Sign in to view the sample vault'}</p>
             </header>
 
             {statusMessage && (
@@ -117,6 +137,15 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
             )}
 
             <form onSubmit={handleSubmit} className="auth-form">
+              {challenge ? (
+                <div className="input-field-group">
+                  <label htmlFor="mfa-code">Six-digit verification code</label>
+                  <div className="input-wrapper">
+                    <i className="fa-solid fa-shield-halved input-icon"></i>
+                    <input id="mfa-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="000000" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))} required />
+                  </div>
+                </div>
+              ) : <>
               <div className="input-field-group">
                 <label htmlFor="identifier">Username or Email</label>
                 <div className="input-wrapper">
@@ -135,14 +164,14 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
 
               <div className="input-field-group">
                 <div className="label-row">
-                  <label htmlFor="password">Master Password</label>
+                  <label htmlFor="password">Account Password</label>
                   <button
                     type="button"
                     className="forgot-link"
                     onClick={() =>
                       setStatusMessage({
                         type: 'info',
-                        text: 'Password reset token flow is initiated via PostgreSQL reset_password_token.',
+                        text: 'Password reset is not implemented in this demo.',
                       })
                     }
                   >
@@ -154,7 +183,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
                   <input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter your master password"
+                    placeholder="Enter your account password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="current-password"
@@ -171,32 +200,25 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
                 </div>
               </div>
 
-              <div className="form-options-row">
-                <label className="checkbox-control">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                  />
-                  <span>Remember my device</span>
-                </label>
-              </div>
+              </>}
 
-              <button type="submit" className="primary-action-btn" disabled={loading}>
+              <button type="submit" className="primary-action-btn" disabled={loading || (challenge && verificationCode.length !== 6)}>
                 {loading ? (
                   <>
                     <i className="fa-solid fa-spinner fa-spin"></i> Authenticating...
                   </>
                 ) : (
                   <>
-                    <i className="fa-solid fa-lock-open"></i> Unlock Vault
+                    <i className={`fa-solid ${challenge ? 'fa-shield-check' : 'fa-lock-open'}`}></i> {challenge ? 'Verify and continue' : 'Unlock Vault'}
                   </>
                 )}
               </button>
             </form>
 
-            <div className="form-divider">
-              <span>or sign in with</span>
+            {challenge && <button type="button" className="mfa-back-button" onClick={() => { setChallenge(null); setVerificationCode(''); setIdentifier(''); setStatusMessage(null); }}>Back to sign in</button>}
+
+            {!challenge && <><div className="form-divider">
+              <span>Social sign-in preview</span>
             </div>
 
             <div className="social-actions-grid">
@@ -228,6 +250,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
                 </button>
               </p>
             </footer>
+            </>}
           </div>
         </main>
       </div>

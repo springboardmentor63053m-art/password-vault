@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import MfaSettingsPanel from '../../../src/MfaSettingsPanel';
+import { confirmTotpSetup, disableTotp, getMfaStatus, startTotpSetup } from '../services/api';
 
 const INITIAL_VAULT_ITEMS = [
   {
@@ -7,7 +9,7 @@ const INITIAL_VAULT_ITEMS = [
     category: 'API Keys',
     username: 'octocat_dev',
     website: 'https://github.com',
-    secret: 'ghp_984j10aKlmnOP901ZqX',
+    secret: 'DEMO_ONLY_GITHUB_TOKEN',
     strength: 'Strong',
     lastUpdated: '2 hours ago',
   },
@@ -17,7 +19,7 @@ const INITIAL_VAULT_ITEMS = [
     category: 'Website Login',
     username: 'cloudadmin@securevault.io',
     website: 'https://aws.amazon.com',
-    secret: 'K9#vL2$pQ8*wE5!m',
+    secret: 'DEMO_ONLY_AWS_SECRET',
     strength: 'Very Strong',
     lastUpdated: 'Yesterday',
   },
@@ -27,7 +29,7 @@ const INITIAL_VAULT_ITEMS = [
     category: 'Banking Credentials',
     username: 'corp_treasury',
     website: 'https://chase.com',
-    secret: 'Tr3@sury!2026#Vault',
+    secret: 'DEMO_ONLY_BANKING_PASSWORD',
     strength: 'Very Strong',
     lastUpdated: '3 days ago',
   },
@@ -37,7 +39,7 @@ const INITIAL_VAULT_ITEMS = [
     category: 'Application Accounts',
     username: 'postgres',
     website: 'localhost:5432',
-    secret: 'postgrespassword',
+    secret: 'DEMO_ONLY_DATABASE_PASSWORD',
     strength: 'Medium',
     lastUpdated: 'Just now',
   },
@@ -47,7 +49,7 @@ const INITIAL_VAULT_ITEMS = [
     category: 'API Keys',
     username: 'bot_integration',
     website: 'https://slack.com',
-    secret: 'xoxb-89104-129031-v9aL0',
+    secret: 'DEMO_ONLY_SLACK_TOKEN',
     strength: 'Strong',
     lastUpdated: '1 week ago',
   },
@@ -75,7 +77,7 @@ export default function VaultDashboard({ currentUser, onLogout }) {
   const [includeUpper, setIncludeUpper] = useState(true);
   const [includeNumbers, setIncludeNumbers] = useState(true);
   const [includeSymbols, setIncludeSymbols] = useState(true);
-  const [generatedPassword, setGeneratedPassword] = useState('v8#Kq2$L9@pM5!zR');
+  const [generatedPassword, setGeneratedPassword] = useState('');
 
   // New Item Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,28 +93,41 @@ export default function VaultDashboard({ currentUser, onLogout }) {
     setRevealedIds((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const copyToClipboard = (text, fieldName) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(fieldName);
-    setTimeout(() => setCopiedField(null), 2000);
+  const copyToClipboard = async (text, fieldName) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      setCopiedField(null);
+    }
   };
 
-  const generatePassword = () => {
+  const generatePassword = (
+    length = genLength,
+    options = { includeUpper, includeNumbers, includeSymbols },
+  ) => {
     const lowers = 'abcdefghijklmnopqrstuvwxyz';
     const uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const nums = '0123456789';
     const syms = '!@#$%^&*()_+-=[]{}|;:,.<>?';
 
     let chars = lowers;
-    if (includeUpper) chars += uppers;
-    if (includeNumbers) chars += nums;
-    if (includeSymbols) chars += syms;
+    if (options.includeUpper) chars += uppers;
+    if (options.includeNumbers) chars += nums;
+    if (options.includeSymbols) chars += syms;
 
     let res = '';
-    const array = new Uint32Array(genLength);
-    window.crypto.getRandomValues(array);
-    for (let i = 0; i < genLength; i++) {
-      res += chars[array[i] % chars.length];
+    const array = new Uint32Array(Math.max(16, length));
+    const upperBound = 0x100000000 - (0x100000000 % chars.length);
+    while (res.length < length) {
+      window.crypto.getRandomValues(array);
+      for (const randomValue of array) {
+        if (randomValue < upperBound) {
+          res += chars[randomValue % chars.length];
+          if (res.length === length) break;
+        }
+      }
     }
     setGeneratedPassword(res);
   };
@@ -157,10 +172,10 @@ export default function VaultDashboard({ currentUser, onLogout }) {
             <i className="fa-solid fa-heart-pulse"></i>
           </div>
           <div className="stat-info">
-            <span className="stat-label">Security Health Score</span>
+            <span className="stat-label">Demo Security Score</span>
             <div className="stat-value-group">
               <span className="stat-value">94%</span>
-              <span className="stat-badge badge-good">Optimal</span>
+              <span className="stat-badge badge-good">Sample</span>
             </div>
           </div>
         </div>
@@ -170,7 +185,7 @@ export default function VaultDashboard({ currentUser, onLogout }) {
             <i className="fa-solid fa-key"></i>
           </div>
           <div className="stat-info">
-            <span className="stat-label">Stored Credentials</span>
+            <span className="stat-label">Sample Credentials</span>
             <span className="stat-value">{items.length}</span>
           </div>
         </div>
@@ -180,10 +195,10 @@ export default function VaultDashboard({ currentUser, onLogout }) {
             <i className="fa-solid fa-triangle-exclamation"></i>
           </div>
           <div className="stat-info">
-            <span className="stat-label">Reused Passwords</span>
+            <span className="stat-label">Reused Password Check</span>
             <div className="stat-value-group">
-              <span className="stat-value">1</span>
-              <span className="stat-badge badge-warn">Attention</span>
+              <span className="stat-value">—</span>
+              <span className="stat-badge badge-warn">Not connected</span>
             </div>
           </div>
         </div>
@@ -193,14 +208,16 @@ export default function VaultDashboard({ currentUser, onLogout }) {
             <i className="fa-solid fa-shield-halved"></i>
           </div>
           <div className="stat-info">
-            <span className="stat-label">Compromised / Leaked</span>
+            <span className="stat-label">Breach Check</span>
             <div className="stat-value-group">
-              <span className="stat-value">0</span>
-              <span className="stat-badge badge-clean">Protected</span>
+              <span className="stat-value">—</span>
+              <span className="stat-badge badge-clean">Not connected</span>
             </div>
           </div>
         </div>
       </section>
+
+      <MfaSettingsPanel getStatus={getMfaStatus} startSetup={startTotpSetup} confirmSetup={confirmTotpSetup} disable={disableTotp} />
 
       {/* Main Grid: Vault Items + Password Generator */}
       <div className="dashboard-grid">
@@ -208,8 +225,10 @@ export default function VaultDashboard({ currentUser, onLogout }) {
         <section className="vault-main-card">
           <div className="vault-header-row">
             <div>
-              <h2 className="section-title">Encrypted Items</h2>
-              <p className="section-sub">AES-256-GCM encrypted records in personal vault</p>
+              <h2 className="section-title">Sample Credentials</h2>
+              <p className="section-sub">
+                Demo only: entries stay in browser memory and are not encrypted or synced to the backend.
+              </p>
             </div>
             <button className="primary-add-btn" onClick={() => setIsModalOpen(true)}>
               <i className="fa-solid fa-plus"></i> New Credential
@@ -333,8 +352,9 @@ export default function VaultDashboard({ currentUser, onLogout }) {
                   max="32"
                   value={genLength}
                   onChange={(e) => {
-                    setGenLength(Number(e.target.value));
-                    generatePassword();
+                    const length = Number(e.target.value);
+                    setGenLength(length);
+                    generatePassword(length);
                   }}
                   className="length-slider"
                 />
@@ -346,8 +366,9 @@ export default function VaultDashboard({ currentUser, onLogout }) {
                     type="checkbox"
                     checked={includeUpper}
                     onChange={(e) => {
-                      setIncludeUpper(e.target.checked);
-                      generatePassword();
+                      const value = e.target.checked;
+                      setIncludeUpper(value);
+                      generatePassword(genLength, { includeUpper: value, includeNumbers, includeSymbols });
                     }}
                   />
                   <span>Uppercase Letters (A-Z)</span>
@@ -357,8 +378,9 @@ export default function VaultDashboard({ currentUser, onLogout }) {
                     type="checkbox"
                     checked={includeNumbers}
                     onChange={(e) => {
-                      setIncludeNumbers(e.target.checked);
-                      generatePassword();
+                      const value = e.target.checked;
+                      setIncludeNumbers(value);
+                      generatePassword(genLength, { includeUpper, includeNumbers: value, includeSymbols });
                     }}
                   />
                   <span>Numbers (0-9)</span>
@@ -368,8 +390,9 @@ export default function VaultDashboard({ currentUser, onLogout }) {
                     type="checkbox"
                     checked={includeSymbols}
                     onChange={(e) => {
-                      setIncludeSymbols(e.target.checked);
-                      generatePassword();
+                      const value = e.target.checked;
+                      setIncludeSymbols(value);
+                      generatePassword(genLength, { includeUpper, includeNumbers, includeSymbols: value });
                     }}
                   />
                   <span>Special Symbols (!@#$)</span>
@@ -385,7 +408,7 @@ export default function VaultDashboard({ currentUser, onLogout }) {
           {/* Session & Architecture Badge */}
           <div className="sidebar-card security-spec-card">
             <h4 className="card-subhead">
-              <i className="fa-solid fa-circle-check"></i> Active Session
+              <i className="fa-solid fa-circle-check"></i> Demo Session
             </h4>
             <div className="spec-item">
               <span className="spec-label">User:</span>
@@ -397,7 +420,7 @@ export default function VaultDashboard({ currentUser, onLogout }) {
             </div>
             <div className="spec-item">
               <span className="spec-label">Database:</span>
-              <span className="spec-val">PostgreSQL 16 pgcrypto</span>
+              <span className="spec-val">PostgreSQL auth API only</span>
             </div>
           </div>
         </aside>
@@ -489,7 +512,7 @@ export default function VaultDashboard({ currentUser, onLogout }) {
                   Cancel
                 </button>
                 <button type="submit" className="primary-action-btn">
-                  Encrypt & Save
+                  Add Sample Item
                 </button>
               </div>
             </form>

@@ -19,6 +19,7 @@ class LoginServiceTest {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
     private final ResultSet row = mock(ResultSet.class);
     private final UUID userId = UUID.randomUUID();
+    private final UUID deviceId = UUID.randomUUID();
     private LoginService service;
 
     @BeforeEach
@@ -39,6 +40,20 @@ class LoginServiceTest {
             RowMapper<?> mapper = invocation.getArgument(1);
             return List.of(mapper.mapRow(row, 0));
         });
+        when(jdbc.queryForObject(contains("FROM devices"), eq(Long.class), any(Object[].class)))
+                .thenReturn(1L);
+        when(jdbc.queryForObject(contains("FROM audit_logs"), eq(Long.class), any(Object[].class)))
+                .thenReturn(1L);
+        when(jdbc.queryForObject(contains("SELECT id FROM devices"), eq(UUID.class), any(Object[].class)))
+                .thenReturn(deviceId);
+    }
+
+    @Test
+    void rejectsThePublicDevelopmentJwtKey() {
+        String publicKey = Base64.getEncoder().encodeToString(
+                "securevault-team3-development-key-change-me-48-bytes-secret!"
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        assertThrows(IllegalArgumentException.class, () -> new LoginService(jdbc, publicKey, 900));
     }
 
     @Test
@@ -47,7 +62,8 @@ class LoginServiceTest {
         var result = service.authenticate("alice", "correct-password", "127.0.0.1", "test");
         assertFalse(result.authenticated());
         assertNull(result.response());
-        verify(jdbc, never()).update(anyString(), any(Object[].class));
+        assertEquals("MFA_SETUP_REQUIRED", result.errorCode());
+        verify(jdbc, never()).update(contains("INSERT INTO sessions"), any(Object[].class));
     }
 
     @Test
@@ -56,8 +72,8 @@ class LoginServiceTest {
         when(row.getObject("locked_until", OffsetDateTime.class)).thenReturn(OffsetDateTime.now().minusMinutes(1));
         assertEquals(401, service.authenticate("alice", "wrong-password", "127.0.0.1", "test").status().value());
         verify(jdbc).update(
-                "UPDATE users SET failed_login_attempts = ?, locked_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                1, userId);
+                "UPDATE users SET failed_login_attempts = ?, locked_until = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                1, null, userId);
     }
 
     @Test
@@ -77,5 +93,16 @@ class LoginServiceTest {
         verify(jdbc).update(
                 "UPDATE users SET failed_login_attempts = 0, locked_until = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                 userId);
+    }
+
+    @Test
+    void firstLoginFromAnUnrecognizedDeviceRequiresEmailWhenTOTPIsNotEnabled() {
+        when(jdbc.queryForObject(contains("FROM devices"), eq(Long.class), any(Object[].class)))
+                .thenReturn(0L);
+        var result = service.authenticate("alice", "correct-password", "127.0.0.1", "test");
+        assertFalse(result.authenticated());
+        assertEquals(503, result.status().value());
+        assertEquals("MFA_EMAIL_UNAVAILABLE", result.errorCode());
+        verify(jdbc, never()).update(contains("INSERT INTO sessions"), any(Object[].class));
     }
 }

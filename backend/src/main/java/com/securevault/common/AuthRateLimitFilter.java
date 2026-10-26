@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -40,14 +41,25 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     private final Map<String, Integer> registerAttempts = new HashMap<>();
     private final Semaphore inFlight = new Semaphore(16);
     private final LongSupplier nanoTime;
+    private final ClientIpResolver clientIpResolver;
     private long windowStart;
 
     public AuthRateLimitFilter() {
-        this(System::nanoTime);
+        this(System::nanoTime, ClientIpResolver.withoutTrustedProxies());
     }
 
     public AuthRateLimitFilter(LongSupplier nanoTime) {
+        this(nanoTime, ClientIpResolver.withoutTrustedProxies());
+    }
+
+    @Autowired
+    public AuthRateLimitFilter(ClientIpResolver clientIpResolver) {
+        this(System::nanoTime, clientIpResolver);
+    }
+
+    public AuthRateLimitFilter(LongSupplier nanoTime, ClientIpResolver clientIpResolver) {
         this.nanoTime = nanoTime;
+        this.clientIpResolver = clientIpResolver;
         this.windowStart = nanoTime.getAsLong();
     }
 
@@ -78,13 +90,15 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         response.setHeader("X-Content-Type-Options", "nosniff");
         response.setHeader("X-Frame-Options", "DENY");
 
-        if (!"POST".equals(request.getMethod())) {
+        String uri = request.getRequestURI();
+        boolean authRequest = "/api/login".equals(uri) || "/api/login/mfa".equals(uri)
+                || "/api/registration/register".equals(uri);
+        if (!"POST".equals(request.getMethod()) || !authRequest) {
             chain.doFilter(request, response);
             return;
         }
 
-        String uri = request.getRequestURI();
-        if (!allow(request.getRemoteAddr(), uri) || !inFlight.tryAcquire()) {
+        if (!allow(clientIpResolver.resolve(request), uri) || !inFlight.tryAcquire()) {
             response.setHeader("Retry-After", "60");
             error(response, 429, "RATE_LIMITED", "Too many requests. Try again later.");
             return;

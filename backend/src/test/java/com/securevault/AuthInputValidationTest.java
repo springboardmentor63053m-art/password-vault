@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import static org.hamcrest.Matchers.containsString;
@@ -30,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthInputValidationTest {
     private final LoginService loginService = mock(LoginService.class);
     private final RegistrationService registrationService = mock(RegistrationService.class);
+    private final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
     private MockMvc mvc;
 
     @Test
@@ -45,7 +47,7 @@ class AuthInputValidationTest {
 
     @BeforeEach
     void setup() {
-        mvc = MockMvcBuilders.standaloneSetup(new AuthController(registrationService, loginService))
+        mvc = MockMvcBuilders.standaloneSetup(new AuthController(registrationService, loginService, jdbcTemplate))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .addFilters(new AuthRateLimitFilter())
                 .build();
@@ -99,6 +101,47 @@ class AuthInputValidationTest {
                 .andExpect(content().string(not(containsString(secret))));
 
         verifyNoInteractions(loginService);
+    }
+
+    @Test
+    void mfaEndpointValidatesSixDigitCodesAndReturnsTheSessionOnlyAfterVerification() throws Exception {
+        UUID challengeId = UUID.randomUUID();
+        Instant expiresAt = Instant.parse("2026-10-15T12:00:00Z");
+        var user = new AuthController.UserResponse(UUID.randomUUID(), "alice", "alice@example.com");
+        var response = new AuthController.LoginResponse("verified-token", "Bearer", expiresAt, user);
+        when(loginService.verifyMfaChallenge(eq(challengeId), eq("123456"), anyString(), nullable(String.class), nullable(String.class)))
+                .thenReturn(new LoginService.AuthenticationResult(true, HttpStatus.OK, null, null, response));
+
+        mvc.perform(post("/api/login/mfa")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"challengeId\":\"" + challengeId + "\",\"code\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value("verified-token"));
+
+        mvc.perform(post("/api/login/mfa")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"challengeId\":\"" + challengeId + "\",\"code\":\"12345x\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+
+        verify(loginService).verifyMfaChallenge(eq(challengeId), eq("123456"), anyString(), nullable(String.class), nullable(String.class));
+    }
+
+    @Test
+    void loginReturnsAChallengeWithoutIssuingASessionToken() throws Exception {
+        var challenge = new LoginService.MfaChallengeResponse(true, UUID.randomUUID(), "EMAIL",
+                "al***@example.com", Instant.parse("2026-10-15T12:05:00Z"));
+        when(loginService.authenticate(eq("alice"), eq("correct-password"), anyString(), nullable(String.class)))
+                .thenReturn(new LoginService.AuthenticationResult(false, HttpStatus.ACCEPTED,
+                        null, null, null, challenge));
+
+        mvc.perform(post("/api/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request("correct-password")))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.mfaRequired").value(true))
+                .andExpect(jsonPath("$.method").value("EMAIL"))
+                .andExpect(jsonPath("$.accessToken").doesNotExist());
     }
 
     private String request(String password) {

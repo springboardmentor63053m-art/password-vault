@@ -23,6 +23,12 @@ public class RegistrationService {
 
     @Transactional
     public AuthController.RegistrationResponse register(String requestedUsername, String requestedEmail, String password) {
+        return register(requestedUsername, requestedEmail, password, "unknown");
+    }
+
+    @Transactional
+    public AuthController.RegistrationResponse register(
+            String requestedUsername, String requestedEmail, String password, String ipAddress) {
         if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new IllegalArgumentException("Password exceeds BCrypt's 72-byte limit.");
         }
@@ -46,6 +52,12 @@ public class RegistrationService {
         if (assignedRoles != 1) {
             throw new IllegalStateException("The default ROLE_USER role is missing from the database.");
         }
+
+        String safeIp = ipAddress == null || ipAddress.isBlank() ? "unknown"
+                : ipAddress.length() <= 45 ? ipAddress : ipAddress.substring(0, 45);
+        jdbcTemplate.update("INSERT INTO audit_logs (user_id, action_type, status, ip_address, details) "
+                        + "VALUES (?, 'ACCOUNT_REGISTERED', 'SUCCESS', ?, 'Self-service registration')",
+                userId, safeIp);
 
         return new AuthController.RegistrationResponse(userId, username, email, Instant.now());
     }

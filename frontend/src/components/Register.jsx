@@ -123,7 +123,7 @@ export default function Register({ onRegisterSuccess, onNavigateLogin }) {
               <i className="fa-solid fa-shield-halved"></i>
             </div>
             <h2 className="brand-title">SecureVault</h2>
-            <p className="brand-subtitle">Create Your Master Encrypted Vault</p>
+            <p className="brand-subtitle">Create a local demo account</p>
           </div>
 
           <div className="shield-illustration">
@@ -153,11 +153,11 @@ export default function Register({ onRegisterSuccess, onNavigateLogin }) {
 
           <div className="zero-knowledge-box">
             <div className="zk-title">
-              <i className="fa-solid fa-lock"></i> Zero-Knowledge Architecture
+              <i className="fa-solid fa-lock"></i> Demo Security Status
             </div>
             <p className="zk-desc">
-              Your master password is never sent in plain text. A unique PBKDF2 salt is generated per account,
-              ensuring only you can decrypt your credentials.
+              Passwords are sent to the authentication backend for BCrypt hashing. Vault encryption and key
+              derivation are not implemented in this demo; use HTTPS for any non-local deployment.
             </p>
           </div>
 
@@ -171,7 +171,7 @@ export default function Register({ onRegisterSuccess, onNavigateLogin }) {
           <div className="form-content-area">
             <header className="form-header">
               <h1 className="form-heading">Create an Account</h1>
-              <p className="form-subheading">Setup your private, zero-knowledge password vault</p>
+              <p className="form-subheading">Create a local demo account</p>
             </header>
 
             {statusMessage && (
@@ -241,7 +241,7 @@ export default function Register({ onRegisterSuccess, onNavigateLogin }) {
               </div>
 
               <div className="input-field-group">
-                <label htmlFor="reg-password">Master Password</label>
+                <label htmlFor="reg-password">Account Password</label>
                 <div className="input-wrapper">
                   <i className="fa-solid fa-key input-icon"></i>
                   <input
@@ -286,14 +286,14 @@ export default function Register({ onRegisterSuccess, onNavigateLogin }) {
               </div>
 
               <div className="input-field-group">
-                <label htmlFor="reg-confirm">Confirm Master Password</label>
+                <label htmlFor="reg-confirm">Confirm Account Password</label>
                 <div className="input-wrapper">
                   <i className="fa-solid fa-check-double input-icon"></i>
                   <input
                     id="reg-confirm"
                     name="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Re-enter master password"
+                    placeholder="Re-enter your account password"
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     autoComplete="new-password"

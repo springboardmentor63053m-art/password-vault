@@ -1,114 +1,77 @@
-# 📋 SecureVault — Project Work & Progress Tracker
+# SecureVault work tracker
 
-> **Infosys Springboard Java Project — Team 3**  
-> **Project Name:** SecureVault: Integrated Password Vault & Secure Credential Sharing Management System  
-> **Status:** Active Development &bull; Milestones 1, 2, and 5 Completed & Consolidated  
-> **Last Updated:** October 17, 2026
+**Project:** SecureVault — Integrated Password Vault and Secure Credential Sharing Management System
+**Team:** Infosys Springboard Team 3
+**Updated:** October 26, 2026
+**Scope:** Current `TEAM-3` implementation and the contribution history being carried to `3-RABISHANKAR`.
 
----
+## Status at a glance
 
-## 📌 Executive Milestone Roadmap
+| Area | Status | Notes |
+| --- | --- | --- |
+| PostgreSQL schema and local container setup | Implemented | Schema bootstrap provisions a restricted backend database account; Redis and pgAdmin are optional tools. |
+| Registration, login, and session lifecycle | Implemented | BCrypt, opaque registration response, rate limiting, lockout, validation, session and device records. |
+| IP and sign-in risk telemetry | Implemented | IP, successful/failed login, new device, repeated failures, and unusual-time signals feed audit/security data. |
+| Admin dashboard and user/role management | Implemented | Role-protected API; password confirmation and audit trail for administrator role changes. |
+| Threat analysis and security score | Implemented with data-source limits | Uses auth/security events and password-health aggregates; no plaintext password inspection. |
+| TOTP authenticator MFA | Implemented | User and admin settings, locally generated QR, manual key, verification before enable, code required at each login once enabled. |
+| Risk-based email MFA | Implemented; SMTP is deployment-configured | New device/IP or unusual-time sign-ins can require a six-digit email code. Delivery depends on valid SMTP settings. |
+| Audit trail search and export | Implemented | Searchable/paginated records; CSV and `.xlsx` export of matching records, up to 50,000. |
+| User-facing vault screen | Demo only | Sample records stay in browser memory and are not encrypted or synchronized. |
+| Encrypted vault API and secure sharing | Planned | No live credential CRUD, key derivation, encryption/decryption, or sharing workflow yet. |
 
-| Milestone | Module / Objective | Status | Completion Date | Key Deliverables |
-| :--- | :--- | :---: | :---: | :--- |
-| **Milestone 1** | Project Initialization, Database Architecture & Container Setup | ✅ **Completed** | Oct 10, 2026 | Normalized 20-table PostgreSQL schema, Redis cache, pgAdmin, Docker Compose. |
-| **Milestone 2** | User Authentication, Access Control & Security Hardening | ✅ **Completed** | Oct 15, 2026 | BCrypt hashing, per-user salt, JJWT issuance, account lockout (5 failed attempts), brute-force rate limiter, timing attack mitigation. |
-| **Milestone 3** | Encryption Engine (AES-256-GCM + PBKDF2) & Vault CRUD APIs | ⏳ **Next Up** | In Progress | Key derivation service, zero-knowledge credential vault CRUD, folder and category management. |
-| **Milestone 4** | Secure Sharing Service, Permissions & Audit Logging | 📅 **Scheduled** | Planned | Time-bound sharing, permission tiers (READ/WRITE/ADMIN), audit logs, anomaly detection, security events. |
-| **Milestone 5** | Consolidated Frontend Application & Interactive Dashboards | ✅ **Completed** | Oct 17, 2026 | Modern React 18 + Vite UI, unified Navbar, Login, Register (with real-time password strength meter), Vault Dashboard preview & Password Generator. |
+## Implemented modules
 
----
+### Database and runtime
 
-## 🏗️ Repository Architecture & Consolidation Log
+- PostgreSQL schema for users, roles, devices, sessions, audit logs, security events, password-health aggregates, vault metadata, and related project entities.
+- Compose bootstrap applies the schema and provisions the least-privilege `securevault_app` database user.
+- Backend container runs with a read-only root filesystem, dropped capabilities, and `no-new-privileges`.
+- Redis 7 and pgAdmin 4 are optional Compose `tools` services; Redis is not currently the session or rate-limit store.
 
-### 1. Frontend Consolidation (`frontend/`)
-* **Previous State:** Fragmented across root-level Create React App (`src/`, `public/`, `package.json` for Login) and a separate Vite project in `registration/`.
-* **Consolidated State:** Centralized into [`frontend/`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/frontend) using **React 18 + Vite**:
-  * Unified navigation via [`Navbar.jsx`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/frontend/src/components/Navbar.jsx)
-  * Seamless state routing between [`Login.jsx`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/frontend/src/components/Login.jsx), [`Register.jsx`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/frontend/src/components/Register.jsx), and [`VaultDashboard.jsx`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/frontend/src/components/VaultDashboard.jsx)
-  * Dynamic password strength scoring & live password generator
-  * Vite proxy forwarding `/api/*` requests to port `8080`
+### Registration, login, and sessions
 
-### 2. Backend Consolidation (`backend/`)
-* **Previous State:** Two independent Spring Boot microservices (`login-service` on port 8082 and `registration-service` on port 8081) with duplicate filters, validators, and properties.
-* **Consolidated State:** Centralized into [`backend/`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/backend) running on port `8080`:
-  * Single Spring Boot 4 / Java 17 service with unified controller [`AuthController.java`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/backend/src/main/java/com/securevault/auth/AuthController.java)
-  * Combined security filters in [`common/`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/backend/src/main/java/com/securevault/common) (`AuthRateLimitFilter`, `GlobalExceptionHandler`, `BcryptPasswordLength`)
-  * Container orchestration simplified to one `securevault-backend` container in [`docker-compose.yml`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/docker-compose.yml)
+- Registration always assigns the normal user role; role requests from the client are not trusted.
+- Login accepts username or email and uses BCrypt password verification.
+- Failed login throttling/lockout, request-size limits, password-length validation, structured API errors, and dummy password verification for unknown users are implemented.
+- Session tokens are validated against active session records; logout revokes the current session.
+- Device identifiers and source IP observations are recorded. Reverse-proxy forwarding is honored only for explicitly trusted CIDRs.
 
-### 3. Documentation Consolidation (`docs/`)
-* Organized project reference assets into [`docs/`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/docs):
-  * [`docs/schema.md`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/docs/schema.md): 20-table ERD and schema specification
-  * [`docs/Java_Integrated Password Vault and Secure Credential Sharing Management System.pdf`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/docs/Java_Integrated%20Password%20Vault%20and%20Secure%20Credential%20Sharing%20Management%20System.pdf): Official project syllabus & specs
-  * [`docs/work_tracker.md`](file:///c:/Users/hiima/Desktop/Infosys%20Springboard%20Project/docs/work_tracker.md): This progress and activity tracking document
+### Administrator console
 
----
+- Dashboard overview, account search/details, account state controls, role controls, connected-device/session review, and device revocation.
+- Role changes require the signed-in administrator’s current password. The actor, target, prior role, and new role are recorded.
+- Threat analysis includes security events, severity/status workflow, login monitoring, password-health metadata, suspicious-vault indicators, and a security score.
+- Vault overview returns metadata and aggregate counts only; credential values are excluded from administrator responses.
+- The audit trail supports filtering and pagination. Export creates UTF-8 CSV or Excel `.xlsx` files locally in the browser. CSV formula-like cells are neutralized; the export is capped at 50,000 matching records.
 
-## 🔍 Feature Checklist & Implementation Status
+### Multi-factor authentication
 
-### Module 1: Database & Infrastructure
-- [x] PostgreSQL 16 schema with `pgcrypto` extension for UUIDs (`gen_random_uuid()`)
-- [x] Relational integrity with cascading foreign keys across 20 tables
-- [x] Initial seed data for system roles (`ROLE_USER`, `ROLE_TEAM_MEMBER`, `ROLE_ADMIN`)
-- [x] Initial seed data for 7 credential categories
-- [x] Redis 7 container for future session caching and distributed rate limiting
-- [x] pgAdmin 4 container for database web administration
-- [x] Performance indexes on email, username, tokens, and foreign keys
+- All account types can enroll from the user dashboard’s security panel; administrators also have **Account security** in the admin console.
+- Enrollment asks for the account password, provides an `otpauth://` link/manual key and local QR code, and requires a valid six-digit TOTP code before activation.
+- Authenticator codes are required at every login for enrolled accounts. Accounts without TOTP can receive email codes for sign-ins that trigger device/IP/time risk checks.
+- TOTP seeds are encrypted at rest. Set a dedicated `MFA_ENCRYPTION_KEY_BASE64` before enrollment and keep it stable. When omitted, current configuration falls back to the JWT signing key.
+- Email code delivery is controlled by SMTP environment variables. Gmail app passwords belong in the local ignored `.env` only.
 
-### Module 2: Authentication & Security
-- [x] User registration with BCrypt hashing and unique per-user salt generation
-- [x] Opaque registration acknowledgement (202 Accepted) preventing user enumeration
-- [x] Login authentication supporting username or email identifier
-- [x] Dummy BCrypt check for nonexistent accounts to mitigate timing attacks
-- [x] 5-consecutive failed attempt account lockout for 15 minutes
-- [x] JJWT HMAC-SHA signing with 15-minute token expiry
-- [x] Session fingerprinting (SHA-256 hash of token stored in `sessions` table)
-- [x] In-memory rate limiting filter (30/min for login, 15/min for register)
-- [x] Request payload size bounding (8 KiB max) and slow-body timeout protection
-- [x] Container security hardening (read-only rootfs, dropped capabilities, non-root user `10001`)
+## Branch contribution record
 
-### Module 3: Encryption Engine & Vault (Upcoming)
-- [ ] PBKDF2 key derivation using master password + user salt
-- [ ] AES-256-GCM symmetric encryption/decryption service
-- [ ] Credential CRUD endpoints (`POST`, `GET`, `PUT`, `DELETE /api/vault/credentials`)
-- [ ] Folder hierarchy and organization APIs
-- [ ] Tagging and category classification endpoints
+The earlier `3-RABISHANKAR` commits added standalone registration and login services, their authentication/security filters and validation, service/container configuration, and tests. A branch README documenting those services was restored after a documentation revert. The implementation summary records the commit references and separates that earlier work from the consolidated features being pushed now.
 
-### Module 4: Secure Sharing & Auditing (Planned)
-- [ ] Credential sharing invitation flow with expiry timestamps
-- [ ] Role-based access control (RBAC) permissions check (READ, WRITE, ADMIN)
-- [ ] Comprehensive immutable audit logging (`audit_logs` table)
-- [ ] Anomaly risk scoring and IP blocking (`security_events`, `blocked_ips`)
-- [ ] Real-time user security notifications (`notifications` table)
+The current `TEAM-3` changes consolidate authentication in `backend/`, build on the team’s React user/admin apps, add account security monitoring and MFA workflows, and add audit export. This tracker and the root README are being refreshed to reflect the current code rather than the older milestone-only status.
 
-### Module 5: Frontend Interface
-- [x] Unified React 18 + Vite single-page application
-- [x] Cohesive enterprise dark theme with Plus Jakarta Sans and JetBrains Mono typography
-- [x] Navigation bar with real-time active view switching and session badge
-- [x] Modern Login view with remember-me, show/hide password, and OAuth mock buttons
-- [x] Modern Registration view with live dynamic **Password Strength Meter**
-- [x] Interactive Vault Dashboard preview with Security Health score (94%)
-- [x] Built-in Password Generator widget (custom length, uppercase, numbers, symbols, copy-to-clipboard)
-- [x] API service layer with dev proxy and offline demo fallbacks
+## Known limitations and follow-up work
 
----
+1. **Vault persistence and encryption:** Build the key-derivation and AES-GCM service, credential/folder CRUD APIs, and encrypted client workflow. The existing vault screen is sample-only.
+2. **Secure sharing:** Implement invitations, permission checks, expiry, revocation, and event auditing.
+3. **Password-health producer:** Connect the current aggregate/reporting path to a real password-quality workflow. Reuse and breach counts are not automatically assessed by this build.
+4. **MFA recovery:** Add recovery codes or a safe second-factor reset process before enforcing authenticator enrollment for every account.
+5. **Operational email validation:** Verify SMTP credentials and monitor delivery in each deployment; do not assume local configuration alone proves delivery.
+6. **Distributed throttling/session cache:** Integrate Redis if the application is deployed across multiple backend instances.
+7. **Production deployment:** Add deployment-specific secrets management, TLS termination, backups, monitoring, and operational rotation procedures.
 
-## 📝 Activity & Changelog
+## Validation notes
 
-| Timestamp | Contributor / Agent | Action Description | Impacted Components |
-| :--- | :--- | :--- | :--- |
-| **Oct 17, 2026** | Pair Programming | Moved documentation and syllabus to `docs/` and initialized `work_tracker.md`. | `docs/`, `README.md` |
-| **Oct 17, 2026** | Pair Programming | Consolidated `registration-service` and `login-service` into unified `backend/` service on port 8080. | `backend/`, `docker-compose.yml`, `auth-services/` |
-| **Oct 17, 2026** | Pair Programming | Consolidated fragmented root CRA and `registration/` into unified `frontend/` (React + Vite). | `frontend/`, root `src/`, `registration/`, `dist/` |
-| **Oct 16, 2026** | Team Contributor | Implemented initial Login Page React UI components. | `src/App.js`, `src/App.css` |
-| **Oct 16, 2026** | Team Contributor | Implemented initial Registration Page React Vite components. | `registration/src/App.jsx` |
-| **Oct 15, 2026** | Team Contributor | Integrated hardened Spring Boot auth microservices (BCrypt + JWT + Lockout). | `auth-services/`, `docker-compose.yml` |
-| **Oct 10, 2026** | Team Contributor | Designed and initialized normalized PostgreSQL 16 database schema & Docker Compose. | `database/schema.sql`, `schema.md` |
-
----
-
-## 🎯 Next Priority Action Items
-1. **Milestone 3 Core:** Implement the cryptographic service class (`EncryptionService.java`) using `AES/GCM/NoPadding` (256-bit) and PBKDF2WithHmacSHA256.
-2. **Credential APIs:** Implement `CredentialController.java` and `CredentialService.java` for encrypted record storage and retrieval.
-3. **Database Performance:** Add functional lower indexes on `users(lower(email))` and `users(lower(username))` in `database/schema.sql`.
-4. **Redis Integration:** Bind Redis caching in `backend` for distributed session tokens and rate limits.
+- The admin Vite production build passed after adding CSV and `.xlsx` export.
+- Both frontends built successfully after adding the shared authenticator QR setup panel.
+- Backend regression tests are available with `mvn test` from `backend/`; rerun after backend changes.
+- See [README.md](../README.md) for setup and local run instructions.

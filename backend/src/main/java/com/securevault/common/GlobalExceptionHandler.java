@@ -9,6 +9,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 @RestControllerAdvice
@@ -30,6 +31,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<AuthController.RegistrationAcknowledgement> handleDuplicate(DuplicateKeyException exception) {
         // Consistent opaque response for duplicates prevents account enumeration
         return AuthController.acknowledgement();
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleExpectedServiceError(ResponseStatusException exception) {
+        String message = exception.getReason() == null ? "The requested operation could not be completed."
+                : exception.getReason();
+        return ResponseEntity.status(exception.getStatusCode()).body(new ErrorResponse(
+                "ADMIN_OPERATION_REJECTED", message, Instant.now()));
     }
 
     public record ErrorResponse(String code, String message, Instant timestamp) {}
