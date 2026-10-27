@@ -257,8 +257,9 @@ erDiagram
 * **`sharing`**: Granular credential sharing between users with permission levels (`VIEW`, `EDIT`, `FULL_MANAGEMENT`), status tracking (`ACTIVE`, `REVOKED`, `EXPIRED`), and expiration timestamps.
 
 ### 4. Security Monitoring, Audit Logging & Alerts
-* **`audit_logs`**: Immutable audit trail for every user action, status (`SUCCESS`/`FAILURE`), IP address, and payload details.
-* **`security_events`**: Anomaly and threat tracking with risk scores (`0-100`) and severity levels (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`).
+* **`audit_logs`**: Audit trail for user actions, status (`SUCCESS`/`FAILURE`), IP address, and minimal details. The backend database role may select and insert audit rows but cannot update or delete them.
+* **`security_events`**: Rule-generated events and alerts with risk scores, severity, status, detection reason, and reviewer notes.
+* **`security_event_history`**: Append-only investigation action history with prior/new status, reviewer, notes, and timestamp.
 * **`blocked_ips`**: IP throttling and brute-force blocklist.
 * **`notifications`**: User alert queue for login notifications, security warnings, and share invites.
 

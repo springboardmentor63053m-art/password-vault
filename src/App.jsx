@@ -11,6 +11,7 @@ import {
   getDashboardOverview,
   getMfaStatus,
   getSystemOverview,
+  getSecurityEvent,
   getUserDetails,
   getUserStats,
   getUsers,
@@ -51,7 +52,7 @@ const formatDate = (value, fallback = "—") => {
 };
 const formatDay = (value) => {
   const date = new Date(`${value}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-IN", { weekday: "short" });
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 };
 const initials = (value = "SV") => value.trim().split(/[\s._-]+/).filter(Boolean).slice(0, 2)
   .map((part) => part[0].toUpperCase()).join("") || "SV";
@@ -198,12 +199,29 @@ function RiskChart({ daily = [] }) {
   );
 }
 
-function EventCard({ event, onStatusChange, busy }) {
+function EventCard({ event, onStatusChange, onDetails, busy }) {
   const severity = riskClass(event.severity || "low");
   const status = event.status || (event.resolved ? "RESOLVED" : "OPEN");
-  return <article className="event-row"><span className={`event-severity-mark ${severity}`}><i className="fa-solid fa-bolt" /></span><div className="event-main"><div className="event-title"><strong>{titleCase((event.eventType || "Security event").replaceAll("_", " "))}</strong><span className={`severity-tag ${severity}`}>{titleCase(severity)}</span>{event.anomalyDetected && <span className="anomaly-tag">Anomaly</span>}</div><p>{event.username}{event.email ? ` · ${event.email}` : ""} <span>·</span> {event.ipAddress || "IP unavailable"}</p><small>{formatDate(event.timestamp)} <span>·</span> Risk score {event.riskScore}</small></div>
-    <label className={`threat-status ${status.toLowerCase()}`}><span>Status</span><select aria-label={`Threat status for ${event.eventType}`} value={status} onChange={(change) => onStatusChange(event.id, change.target.value)} disabled={busy}><option value="OPEN">Open</option><option value="INVESTIGATING">Investigating</option><option value="RESOLVED">Resolved</option></select></label>
+  return <article className="event-row"><span className={`event-severity-mark ${severity}`}><i className="fa-solid fa-bolt" /></span><div className="event-main"><div className="event-title"><strong>{event.alertTitle || titleCase((event.eventType || "Security event").replaceAll("_", " "))}</strong><span className={`severity-tag ${severity}`}>{titleCase(severity)}</span><span className="event-id" title={event.id}>#{event.id?.slice(0, 8)}</span>{event.anomalyDetected && <span className="anomaly-tag">Flagged</span>}</div><p>{event.username}{event.email ? ` · ${event.email}` : ""} <span>·</span> {event.ipAddress || "IP unavailable"}</p><small className="event-detection-reason">{event.detectionReason}</small><small>{formatDate(event.timestamp)} <span>·</span> {event.relatedEventCount || 1} related event(s)</small></div>
+    <label className={`threat-status ${status.toLowerCase()}`}><span>Status</span><select aria-label={`Threat status for ${event.eventType}`} value={status} onChange={(change) => onStatusChange(event.id, change.target.value)} disabled={busy}><option value="OPEN">Open</option><option value="INVESTIGATING">Investigating</option><option value="RESOLVED">Resolved</option><option value="FALSE_POSITIVE">False positive</option></select></label>
+    <button className="event-details-button" type="button" onClick={() => onDetails?.(event.id)}>Details</button>
   </article>;
+}
+
+function SecurityEventDetails({ details, status, notes, onStatusChange, onNotesChange, onSave, onClose, busy, loading }) {
+  const event = details?.event;
+  return <div className="dialog-backdrop" onMouseDown={(change) => { if (change.target === change.currentTarget) onClose(); }}>
+    <section className="security-event-dialog" role="dialog" aria-modal="true" aria-labelledby="security-event-title">
+      <header className="drawer-header"><div><span className="panel-eyebrow">THREAT INVESTIGATION</span><h2 id="security-event-title">{event?.alertTitle || "Security alert"}</h2><p>{event?.eventType?.replaceAll("_", " ")}</p></div><button className="drawer-close" onClick={onClose} aria-label="Close alert details"><i className="fa-solid fa-xmark" /></button></header>
+      {loading ? <div className="drawer-loading"><i className="fa-solid fa-spinner fa-spin" /> Loading supporting events</div> : event && <div className="security-event-detail-content">
+        <dl className="security-detail-grid"><div><dt>Alert ID</dt><dd>{event.id}</dd></div><div><dt>Account</dt><dd>{event.username}{event.email ? ` (${event.email})` : ""}</dd></div><div><dt>Detected</dt><dd>{formatDate(event.timestamp)}</dd></div><div><dt>Severity and score</dt><dd>{titleCase(event.severity)} · {event.riskScore}/100</dd></div><div><dt>Source IP</dt><dd>{event.ipAddress || "Unavailable"}</dd></div><div><dt>Rule / event type</dt><dd>{event.eventType}</dd></div><div><dt>Related events</dt><dd>{event.relatedEventCount}</dd></div></dl>
+        <section><h3>Why it was flagged</h3><p>{event.detectionReason}</p></section>
+        <section><h3>Supporting audit activity</h3>{details.relatedEvents?.length ? <ul className="security-support-list">{details.relatedEvents.map((item) => <li key={item.id}><strong>{titleCase(item.action.replaceAll("_", " "))}</strong><span>{item.result} · {item.ipAddress || "IP unavailable"} · {formatDate(item.timestamp)}</span>{item.details && <small>{item.details}</small>}</li>)}</ul> : <p>No matching audit records were found in the surrounding 10-minute window.</p>}</section>
+        <section><h3>Investigation history</h3>{details.history?.length ? <ul className="security-support-list">{details.history.map((item, index) => <li key={`${item.timestamp}-${index}`}><strong>{item.reviewer}: {item.previousStatus || "Created"} → {item.status}</strong><span>{formatDate(item.timestamp)}</span>{item.notes && <small>{item.notes}</small>}</li>)}</ul> : <p>No investigation actions recorded yet.</p>}</section>
+        <form className="security-investigation-form" onSubmit={onSave}><label>Status<select value={status} onChange={(change) => onStatusChange(change.target.value)}><option value="OPEN">Open</option><option value="INVESTIGATING">Investigating</option><option value="RESOLVED">Resolved</option><option value="FALSE_POSITIVE">False positive</option></select></label><label>Investigation notes<textarea maxLength={1000} value={notes} onChange={(change) => onNotesChange(change.target.value)} placeholder="Record the review outcome or next steps" /></label><div><button type="button" className="button-secondary" onClick={onClose}>Close</button><button className="button-primary" disabled={busy}>{busy ? "Saving…" : "Save investigation"}</button></div></form>
+      </div>}
+    </section>
+  </div>;
 }
 
 function App() {
@@ -224,6 +242,17 @@ function App() {
   const [activities, setActivities] = useState({ items: [], page: 0, size: PAGE_SIZE, total: 0 });
   const [vaultOverview, setVaultOverview] = useState(null);
   const [analytics, setAnalytics] = useState(null);
+  const [securityFrom, setSecurityFrom] = useState(() => new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10));
+  const [securityTo, setSecurityTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [securitySearch, setSecuritySearch] = useState("");
+  const [securitySeverity, setSecuritySeverity] = useState("ALL");
+  const [securityStatus, setSecurityStatus] = useState("ALL");
+  const [securitySort, setSecuritySort] = useState("NEWEST");
+  const [securityPage, setSecurityPage] = useState(0);
+  const [selectedSecurityEvent, setSelectedSecurityEvent] = useState(null);
+  const [securityEventLoading, setSecurityEventLoading] = useState(false);
+  const [investigationStatus, setInvestigationStatus] = useState("OPEN");
+  const [investigationNotes, setInvestigationNotes] = useState("");
   const [systemOverview, setSystemOverview] = useState(null);
   const [userSearch, setUserSearch] = useState("");
   const [quickSearch, setQuickSearch] = useState("");
@@ -285,14 +314,26 @@ function App() {
     if (authState !== "signed-in") return undefined;
     let mounted = true;
     setSummaryLoading(true);
-    Promise.all([getDashboardOverview(), getUserStats(), getVaultOverview(), getAnalytics(), getSystemOverview()])
-      .then(([dashboard, stats, vaults, reports, system]) => {
+    Promise.all([getDashboardOverview(), getUserStats(), getVaultOverview(), getSystemOverview()])
+      .then(([dashboard, stats, vaults, system]) => {
         if (!mounted) return;
-        setOverview(dashboard); setUserStats(stats); setVaultOverview(vaults); setAnalytics(reports); setSystemOverview(system);
+        setOverview(dashboard); setUserStats(stats); setVaultOverview(vaults); setSystemOverview(system);
       }).catch((error) => { if (mounted) handleRequestError(error); })
       .finally(() => { if (mounted) setSummaryLoading(false); });
     return () => { mounted = false; };
   }, [authState, refreshKey, handleRequestError]);
+
+  useEffect(() => {
+    if (authState !== "signed-in" || !securityFrom || !securityTo) return undefined;
+    let mounted = true;
+    getAnalytics({ from: securityFrom, to: securityTo, search: securitySearch,
+      severity: securitySeverity, status: securityStatus, page: securityPage,
+      size: PAGE_SIZE, sort: securitySort })
+      .then((data) => { if (mounted) setAnalytics(data); })
+      .catch((error) => { if (mounted) handleRequestError(error); });
+    return () => { mounted = false; };
+  }, [authState, refreshKey, securityFrom, securityTo, securitySearch,
+    securitySeverity, securityStatus, securityPage, securitySort, handleRequestError]);
 
   useEffect(() => {
     if (authState !== "signed-in") return undefined;
@@ -403,14 +444,40 @@ function App() {
     finally { setBusyAction(""); }
   };
 
-  const handleEventStatus = async (eventId, status) => {
+  const handleEventStatus = async (eventId, status, notes = "") => {
     setBusyAction(eventId);
     try {
-      await updateSecurityEventStatus(eventId, status);
+      await updateSecurityEventStatus(eventId, status, notes);
       notify(`Threat marked ${status.toLowerCase()}.`);
       setRefreshKey((key) => key + 1);
     } catch (error) { handleRequestError(error); }
     finally { setBusyAction(""); }
+  };
+
+  const openSecurityEvent = async (eventId) => {
+    setSelectedSecurityEvent({ eventId, loading: true });
+    setSecurityEventLoading(true);
+    try {
+      const details = await getSecurityEvent(eventId);
+      setSelectedSecurityEvent(details);
+      setInvestigationStatus(details.event.status || "OPEN");
+      setInvestigationNotes("");
+    } catch (error) {
+      setSelectedSecurityEvent(null);
+      handleRequestError(error);
+    } finally { setSecurityEventLoading(false); }
+  };
+
+  const saveSecurityInvestigation = async (event) => {
+    event.preventDefault();
+    const eventId = selectedSecurityEvent?.event?.id;
+    if (!eventId) return;
+    await handleEventStatus(eventId, investigationStatus, investigationNotes);
+    try {
+      const details = await getSecurityEvent(eventId);
+      setSelectedSecurityEvent(details);
+      setInvestigationNotes("");
+    } catch (error) { handleRequestError(error); }
   };
 
   const exportActivities = async (format) => {
@@ -493,7 +560,7 @@ function App() {
       </section>
       <section className="overview-grid overview-lower-grid">
         <article className="panel"><div className="panel-heading"><div><span className="panel-eyebrow">RECENT CHANGES</span><h2>Latest activity</h2><p>New events from your audit trail</p></div><button className="panel-link" onClick={() => navigate("activity")}>All activity <i className="fa-solid fa-arrow-right" /></button></div><ActivityRows items={overview?.recentActivities || []} compact /></article>
-        <article className="panel event-preview-panel"><div className="panel-heading"><div><span className="panel-eyebrow">PRIORITY REVIEW</span><h2>Security events</h2><p>{activeEvents.length} recent unresolved item(s)</p></div><button className="panel-link" onClick={() => navigate("security")}>View all <i className="fa-solid fa-arrow-right" /></button></div>{activeEvents.slice(0, 3).map((event) => <EventCard key={event.id} event={event} onStatusChange={handleEventStatus} busy={busyAction === event.id} />)}{!activeEvents.length && <div className="clear-state"><span><i className="fa-solid fa-check" /></span><strong>All clear</strong><p>No unresolved security events.</p></div>}</article>
+        <article className="panel event-preview-panel"><div className="panel-heading"><div><span className="panel-eyebrow">PRIORITY REVIEW</span><h2>Security events</h2><p>{activeEvents.length} recent unresolved item(s)</p></div><button className="panel-link" onClick={() => navigate("security")}>View all <i className="fa-solid fa-arrow-right" /></button></div>{activeEvents.slice(0, 3).map((event) => <EventCard key={event.id} event={event} onStatusChange={handleEventStatus} onDetails={openSecurityEvent} busy={busyAction === event.id} />)}{!activeEvents.length && <div className="clear-state"><span><i className="fa-solid fa-check" /></span><strong>All clear</strong><p>No unresolved security events.</p></div>}</article>
       </section>
       <div className="privacy-note"><i className="fa-solid fa-lock" /><span>Credential contents remain encrypted and are never exposed in administrator views.</span><button onClick={() => navigate("vaults")}>Vault privacy <i className="fa-solid fa-arrow-right" /></button></div>
     </div>
@@ -524,6 +591,20 @@ function App() {
 
   const renderSecurity = () => (
     <div className="page-stack">
+      <section className="security-analytics-controls" aria-label="Threat analytics filters">
+        <label>From<input type="date" value={securityFrom} max={securityTo} onChange={(event) => { setSecurityFrom(event.target.value); setSecurityPage(0); }} /></label>
+        <label>To<input type="date" value={securityTo} min={securityFrom} max={new Date().toISOString().slice(0, 10)} onChange={(event) => { setSecurityTo(event.target.value); setSecurityPage(0); }} /></label>
+        <span>All summary counts and trends use this date range.</span>
+      </section>
+      <section className="security-summary-cards">
+        {[
+          ["Total security alerts", analytics?.summary?.totalAlerts, "fa-solid fa-bell", "blue"],
+          ["High-severity alerts", analytics?.summary?.highSeverityAlerts, "fa-solid fa-triangle-exclamation", "red"],
+          ["Failed login attempts", analytics?.summary?.failedLoginAttempts, "fa-solid fa-right-to-bracket", "amber"],
+          ["Open investigations", analytics?.summary?.openInvestigations, "fa-solid fa-magnifying-glass", "violet"],
+          ["Suspicious activities", analytics?.summary?.suspiciousActivities, "fa-solid fa-shield-halved", "cyan"],
+        ].map(([label, value, icon, tone]) => <article key={label}><span className={`mini-stat-icon ${tone}`}><i className={icon} /></span><div><small>{label}</small><strong>{formatCount(value)}</strong></div></article>)}
+      </section>
       <section className="security-summary-banner"><div><span className="panel-eyebrow">OVERALL VAULT SECURITY SCORE</span><h2>{(analytics?.securityScore ?? overview?.securityScore ?? 0) >= 80 ? "No high-impact risks are currently open." : "Review the latest security signals."}</h2><p>Score factors in open threat severity, available password-health findings, and monitoring coverage gaps.</p></div><div className="security-summary-score"><strong>{analytics?.securityScore ?? overview?.securityScore ?? "—"}<small>%</small></strong><span>SECURITY SCORE</span></div></section>
       <section className="panel threat-panel"><div className="panel-heading panel-heading-spaced"><div><span className="panel-eyebrow">SIGN-IN MONITORING</span><h2>Login and IP activity</h2><p>Successful and failed sign-ins over the last day, with source IP visibility.</p></div><span className="live-pill"><i /> LIVE DATA</span></div><div className="threat-metric-grid">
         <article><span className="mini-stat-icon green"><i className="fa-solid fa-right-to-bracket" /></span><div><small>Successful sign-ins · 24h</small><strong>{formatCount(analytics?.loginMonitoring?.successful24h)}</strong></div></article>
@@ -532,7 +613,7 @@ function App() {
         <article><span className="mini-stat-icon violet"><i className="fa-solid fa-laptop" /></span><div><small>First-seen devices · 30d</small><strong>{formatCount(analytics?.loginMonitoring?.newDevices30d)}</strong></div></article>
         <article><span className="mini-stat-icon cyan"><i className="fa-regular fa-clock" /></span><div><small>Unusual-hour alerts · 30d</small><strong>{formatCount(analytics?.loginMonitoring?.unusualHours30d)}</strong></div></article>
         <article><span className="mini-stat-icon red"><i className="fa-solid fa-user-lock" /></span><div><small>Repeated-failure alerts · 30d</small><strong>{formatCount(analytics?.loginMonitoring?.repeatedFailures30d)}</strong></div></article>
-      </div><p className="threat-footnote">A repeated-failure alert starts at 3 rejected attempts from the same account and IP within 10 minutes, and rises to Critical at 5. First-seen devices use a pseudonymous browser-profile fingerprint. Unusual-hour detection uses UTC 00:00–04:59 after five prior successful sign-ins in the past 30 days, when no earlier sign-in falls in that window.</p></section>
+      </div><p className="threat-footnote">Repeated failed-login alerts start at {analytics?.threatRules?.failedLoginThreshold ?? 4} attempts for the same account and IP within {analytics?.threatRules?.failedLoginWindowMinutes ?? 5} minutes, and escalate to Critical at {analytics?.threatRules?.criticalEscalationThreshold ?? 6}. Repeated denied protected API access is flagged after 5 attempts within 5 minutes. First-seen devices use a pseudonymous browser-profile fingerprint. Unusual-hour detection uses UTC 00:00–04:59 after five prior successful sign-ins in the past 30 days with none in that window.</p></section>
       <section className="panel threat-panel"><div className="panel-heading panel-heading-spaced"><div><span className="panel-eyebrow">CREDENTIAL HEALTH</span><h2>Weak, reused, and compromised passwords</h2><p>Aggregate assessment only; the admin console never receives password contents.</p></div><span className={`coverage-pill ${analytics?.passwordHealth?.assessedUsers ? "covered" : "limited"}`}>{analytics?.passwordHealth?.assessedUsers ? `${formatCount(analytics.passwordHealth.assessedUsers)} / ${formatCount(analytics.passwordHealth.totalUsers)} assessed` : "Assessment data unavailable"}</span></div><div className="threat-metric-grid password-threat-grid">
         <article><span className="mini-stat-icon amber"><i className="fa-solid fa-key" /></span><div><small>Weak credentials · score &lt; 40</small><strong>{formatCount(analytics?.passwordHealth?.weakPasswords)}</strong></div></article>
         <article><span className="mini-stat-icon orange"><i className="fa-solid fa-clone" /></span><div><small>Reused passwords</small><strong>{formatCount(analytics?.passwordHealth?.reusedPasswords)}</strong></div></article>
@@ -541,8 +622,12 @@ function App() {
       </div><p className="threat-footnote">Weak counts use stored strength metadata or health reports. Reuse and breach counts appear only when a password-health assessment has supplied them.</p></section>
       <section className="panel threat-panel"><div className="panel-heading panel-heading-spaced"><div><span className="panel-eyebrow">VAULT ACCESS MONITORING</span><h2>Suspicious vault activity</h2><p>Vault and credential audit events are checked for security alerts.</p></div><span className={`coverage-pill ${analytics?.vaultMonitoring?.trackingActive ? "covered" : "limited"}`}>{analytics?.vaultMonitoring?.trackingActive ? "Audit history available" : "No vault events recorded"}</span></div><div className="threat-metric-grid vault-threat-grid"><article><span className="mini-stat-icon violet"><i className="fa-solid fa-vault" /></span><div><small>Vault/credential audit events</small><strong>{formatCount(analytics?.vaultMonitoring?.trackedEvents)}</strong></div></article><article><span className="mini-stat-icon red"><i className="fa-solid fa-shield-halved" /></span><div><small>Open suspicious-access alerts</small><strong>{formatCount(analytics?.vaultMonitoring?.suspiciousAlerts)}</strong></div></article></div><p className="threat-footnote">A burst of 20 successful vault or credential audit actions from one account and IP within five minutes creates a High alert. Credential access operations are not yet emitting audit events in this backend, so zero means no source data is available to analyze.</p></section>
       <section className="mini-stat-grid severity-mini-grid">{Object.entries(unresolvedBySeverity).map(([severity, count]) => <article key={severity}><span className={`mini-stat-icon ${severity}`}><i className="fa-solid fa-bolt" /></span><div><small>{titleCase(severity)} alerts</small><strong>{formatCount(count)}</strong></div></article>)}</section>
-      <section className="panel"><div className="panel-heading panel-heading-spaced"><div><span className="panel-eyebrow">SEVEN DAY TREND</span><h2>Events by severity</h2><p>Daily counts from the security event log.</p></div><span className="live-pill"><i /> LIVE DATA</span></div><RiskChart daily={analytics?.daily || []} /><div className="chart-legend"><span><i className="legend-dot critical" /> Critical</span><span><i className="legend-dot high" /> High</span><span><i className="legend-dot medium" /> Medium</span><span><i className="legend-dot low" /> Low</span></div></section>
-      <section className="panel"><div className="panel-heading panel-heading-spaced"><div><span className="panel-eyebrow">INVESTIGATE</span><h2>Security alerts and threat status</h2><p>Change each item to open, investigating, or resolved.</p></div><span className="alert-total">{formatCount(analytics?.unresolved)}</span></div><div className="event-list">{analytics?.events?.map((event) => <EventCard key={event.id} event={event} onStatusChange={handleEventStatus} busy={busyAction === event.id} />)}{!analytics?.events?.length && <div className="empty-state"><span className="empty-state-icon"><i className="fa-solid fa-shield-check" /></span><strong>No security events recorded</strong><p>New signals will appear when the backend records them.</p></div>}</div></section>
+      <section className="panel"><div className="panel-heading panel-heading-spaced"><div><span className="panel-eyebrow">SELECTED DATE RANGE</span><h2>Security events by severity</h2><p>Daily counts from {securityFrom} through {securityTo}.</p></div><span className="live-pill"><i /> LIVE DATA</span></div><RiskChart daily={analytics?.daily || []} /><div className="chart-legend"><span><i className="legend-dot critical" /> Critical</span><span><i className="legend-dot high" /> High</span><span><i className="legend-dot medium" /> Medium</span><span><i className="legend-dot low" /> Low</span></div></section>
+      <section className="panel"><div className="panel-heading panel-heading-spaced"><div><span className="panel-eyebrow">INVESTIGATE</span><h2>Recent security alerts</h2><p>Search, filter, sort, inspect supporting activity, and record investigation outcomes.</p></div><span className="alert-total">{formatCount(analytics?.eventsTotal)}</span></div>
+        <div className="security-alert-filters"><label className="table-search"><i className="fa-solid fa-magnifying-glass" /><input value={securitySearch} onChange={(event) => { setSecuritySearch(event.target.value); setSecurityPage(0); }} placeholder="Search alert, account, IP" aria-label="Search security alerts" /></label><label>Severity<select value={securitySeverity} onChange={(event) => { setSecuritySeverity(event.target.value); setSecurityPage(0); }}><option value="ALL">All severities</option><option value="CRITICAL">Critical</option><option value="HIGH">High</option><option value="MEDIUM">Medium</option><option value="LOW">Low</option></select></label><label>Status<select value={securityStatus} onChange={(event) => { setSecurityStatus(event.target.value); setSecurityPage(0); }}><option value="ALL">All statuses</option><option value="OPEN">Open</option><option value="INVESTIGATING">Investigating</option><option value="RESOLVED">Resolved</option><option value="FALSE_POSITIVE">False positive</option></select></label><label>Sort<select value={securitySort} onChange={(event) => setSecuritySort(event.target.value)}><option value="NEWEST">Newest first</option><option value="OLDEST">Oldest first</option></select></label></div>
+        <div className="event-list">{analytics?.events?.map((event) => <EventCard key={event.id} event={event} onStatusChange={handleEventStatus} onDetails={openSecurityEvent} busy={busyAction === event.id} />)}{!analytics?.events?.length && <div className="empty-state"><span className="empty-state-icon"><i className="fa-solid fa-shield-check" /></span><strong>No alerts match these filters</strong><p>Try a wider date range or clear the search and filters.</p></div>}</div>
+        <Pagination pageData={{ page: analytics?.eventsPage || 0, size: analytics?.eventsSize || PAGE_SIZE, total: analytics?.eventsTotal || 0 }} onChange={setSecurityPage} />
+      </section>
       <section className="panel"><div className="panel-heading panel-heading-spaced"><div><span className="panel-eyebrow">AUTHENTICATION AUDIT</span><h2>Recent login records</h2><p>Source IP, account, result, and timestamp from the audit log.</p></div><button className="panel-link" onClick={() => navigate("activity")}>Full audit trail <i className="fa-solid fa-arrow-right" /></button></div><div className="audit-table-wrap"><table className="data-table audit-table"><thead><tr><th>Event</th><th>Account</th><th>Source IP</th><th>Time</th><th>Result</th></tr></thead><tbody>{(analytics?.recentAuthentication || []).map((item) => <tr key={item.id}><td><strong>{item.action}</strong></td><td><span className="audit-account">{item.name}</span><small className="table-subline">{item.email}</small></td><td><span className="mono-text">{item.device}</span></td><td>{formatDate(item.time)}</td><td><span className={`activity-status ${item.status === "Success" ? "good" : "review"}`}><i />{item.status}</span></td></tr>)}{!analytics?.recentAuthentication?.length && <tr><td colSpan="5"><div className="empty-state"><strong>No login records found</strong><p>New successful and failed sign-ins will appear here.</p></div></td></tr>}</tbody></table></div></section>
     </div>
   );
@@ -573,9 +658,11 @@ function App() {
         <div className="sidebar-user"><span className="sidebar-user-avatar">{initials(admin?.username)}</span><span className="sidebar-user-copy"><strong>{admin?.username || "Administrator"}</strong><small>{admin?.email || "ROLE_ADMIN"}</small></span><button onClick={handleSignOut} aria-label="Sign out" title="Sign out"><i className="fa-solid fa-arrow-right-from-bracket" /></button></div>
       </aside>
       <main className="admin-main">
-        <header className="admin-topbar"><div className="topbar-leading"><button className="mobile-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation"><i className="fa-solid fa-bars" /></button><div className="topbar-breadcrumb"><span>SecureVault</span><i className="fa-solid fa-chevron-right" /><strong>{NAV_ITEMS.find((item) => item.id === activePage)?.label}</strong></div></div><div className="topbar-actions"><form className="quick-search" onSubmit={jumpToUsers}><i className="fa-solid fa-magnifying-glass" /><input value={quickSearch} onChange={(event) => setQuickSearch(event.target.value)} placeholder="Find an account" aria-label="Search accounts" /><kbd>↵</kbd></form><span className="topbar-divider" /><span className="connection-indicator"><i /> API connected</span><button className="refresh-button" onClick={() => setRefreshKey((key) => key + 1)} aria-label="Refresh dashboard" title="Refresh dashboard"><i className={`fa-solid fa-rotate ${summaryLoading ? "fa-spin" : ""}`} /></button></div></header>
+        <header className="admin-topbar"><div className="topbar-leading"><button className="mobile-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation"><i className="fa-solid fa-bars" /></button><div className="topbar-breadcrumb"><span>SecureVault</span><i className="fa-solid fa-chevron-right" /><strong>{NAV_ITEMS.find((item) => item.id === activePage)?.label}</strong></div></div><div className="topbar-actions"><form className="quick-search" onSubmit={jumpToUsers}><i className="fa-solid fa-magnifying-glass" /><input value={quickSearch} onChange={(event) => setQuickSearch(event.target.value)} placeholder="Find an account" aria-label="Search accounts" /><kbd>↵</kbd></form><span className="topbar-divider" /><span className="connection-indicator"><i /> API connected</span><button className="refresh-button" onClick={() => setRefreshKey((key) => key + 1)} aria-label="Refresh dashboard" title="Refresh dashboard"><i className={`fa-solid fa-rotate ${summaryLoading ? "fa-spin" : ""}`} /></button><button className="topbar-signout" onClick={handleSignOut}><i className="fa-solid fa-arrow-right-from-bracket" aria-hidden="true" /><span>Sign out</span></button></div></header>
         <div className="admin-content"><PageTitle {...pageTitle}><div className="page-title-actions"><span className="date-chip"><i className="fa-regular fa-calendar" /> {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}</span>{summaryLoading && <span className="updating-label"><i className="fa-solid fa-circle-notch fa-spin" /> Syncing</span>}</div></PageTitle>{content}</div>
       </main>
+
+      {selectedSecurityEvent && <SecurityEventDetails details={selectedSecurityEvent} loading={securityEventLoading || selectedSecurityEvent.loading} status={investigationStatus} notes={investigationNotes} onStatusChange={setInvestigationStatus} onNotesChange={setInvestigationNotes} onSave={saveSecurityInvestigation} onClose={() => setSelectedSecurityEvent(null)} busy={Boolean(busyAction)} />}
 
       {selectedUser && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedUser(null); }}><section className="user-drawer" role="dialog" aria-modal="true" aria-labelledby="user-drawer-title"><header className="drawer-header"><div><span className="panel-eyebrow">ACCOUNT PROFILE</span><h2 id="user-drawer-title">{selectedUser.name}</h2><p>{selectedUser.email}</p></div><button className="drawer-close" onClick={() => setSelectedUser(null)} aria-label="Close details"><i className="fa-solid fa-xmark" /></button></header>
         {selectedUser.loading ? <div className="drawer-loading"><i className="fa-solid fa-spinner fa-spin" /> Loading account details</div> : <div className="drawer-content"><div className="drawer-identity-row"><span className="drawer-avatar">{initials(selectedUser.name)}</span><div><span className={`account-status ${selectedUser.active ? "active" : "disabled"}`}><i />{selectedUser.active ? "Active account" : "Disabled account"}</span><small>Joined {formatDate(selectedUser.joinDate, "date unavailable")}</small></div><span className={`risk-badge ${riskClass(selectedUser.riskLevel)}`}><i />{titleCase(selectedUser.riskLevel)} {selectedUser.riskScore}</span></div>

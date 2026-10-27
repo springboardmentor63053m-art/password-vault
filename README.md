@@ -28,7 +28,8 @@ The root React/Vite application provides:
 - Overview metrics and service status.
 - User search, account details, role management, account enable/disable, device/session review, and device revocation.
 - Administrator role changes require the acting administrator’s password and are recorded in the audit trail.
-- Threat analysis for login outcomes, IP/device changes, repeated failures, unusual login times, password-health metadata, suspicious vault activity, alert severity/status, and the overall security score.
+- Threat analytics with date-range summary cards, severity trends, searchable/filtered/sorted/paginated alerts, related activity details, reviewer notes, and audited Open/Investigating/Resolved/False Positive states.
+- Rule-based detection for configurable repeated failed logins, repeated denied protected API access, new device/IP and unusual-hour sign-ins, suspicious vault-action bursts, and successful share/permission audit events.
 - Paginated and searchable audit records.
 - **CSV** and **Excel `.xlsx`** audit exports for the current search, up to 50,000 matching records. Export files include event ID, account, email, action, source IP, timestamp, result, and details. CSV fields are escaped and guarded against spreadsheet formula injection.
 - Vault metadata totals. Credential contents are not returned to the admin API.
@@ -155,7 +156,9 @@ After this bootstrap, existing administrators can promote or demote other accoun
 
 ## Threat analysis and known limits
 
-Threat signals are generated from authentication and recorded security events. Password-health reporting consumes metadata/aggregate rows; it does not inspect a user’s plaintext passwords, and no breach-check provider is connected. The current demo vault does not call vault APIs, so live credential-access events are not yet produced by that screen. Redis is provisioned as an optional service but is not the current session/rate-limit store.
+Threat signals are generated from authentication and recorded security events. The admin endpoints are protected by Spring Security and the existing live-session/admin-role checks. Failed-login alerts default to four failures in five minutes and escalate at six; configure `SECUREVAULT_FAILED_LOGIN_THRESHOLD` and `SECUREVAULT_FAILED_LOGIN_WINDOW_MINUTES` to adjust those values. Repeated denied API access alerts default to five requests in five minutes. Audit records are insert-only for the backend database role.
+
+Password-health reporting consumes metadata/aggregate rows; it does not inspect a user’s plaintext passwords, and no breach-check provider is connected. The current demo vault does not call vault APIs, so live credential-access events are not produced by that screen. The project has no sharing API yet, so sharing alerts will appear only when a successful share or permission change is written to the audit log. No IP geolocation provider is connected, so the system detects new IPs rather than making location-based judgments. Redis is provisioned as an optional service but is not the current session/rate-limit store.
 
 Authenticator MFA is opt-in per account. There is no recovery-code workflow yet, so users should keep access to their authenticator device and email account. Configure and verify SMTP before relying on email challenges.
 

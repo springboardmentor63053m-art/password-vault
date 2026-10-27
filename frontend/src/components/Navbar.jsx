@@ -48,8 +48,9 @@ export default function Navbar({ activeView, setActiveView, currentUser, onLogou
                 <i className="fa-solid fa-circle-user"></i>
                 <span className="user-name">{currentUser.username || currentUser.email}</span>
               </div>
-              <button className="logout-btn" onClick={onLogout} title="Sign Out">
-                <i className="fa-solid fa-arrow-right-from-bracket"></i>
+              <button className="logout-btn" onClick={onLogout} aria-label="Sign out" title="Sign out">
+                <i className="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>
+                <span>Sign out</span>
               </button>
             </>
           )}

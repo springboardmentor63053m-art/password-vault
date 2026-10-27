@@ -39,11 +39,18 @@ public class LoginService {
     private final String dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
     private final SecretKey signingKey;
     private final long expirationSeconds;
+    private final int failedLoginAlertThreshold;
+    private final int failedLoginWindowMinutes;
     private final EmailChallengeSender emailChallengeSender;
     private final MfaCryptoService mfaCrypto;
 
     public LoginService(JdbcTemplate jdbcTemplate, String secretBase64, long expirationSeconds) {
-        this(jdbcTemplate, secretBase64, expirationSeconds, null, new MfaCryptoService(secretBase64));
+        this(jdbcTemplate, secretBase64, expirationSeconds, null, new MfaCryptoService(secretBase64), 4, 5);
+    }
+
+    public LoginService(JdbcTemplate jdbcTemplate, String secretBase64, long expirationSeconds,
+                        EmailChallengeSender emailChallengeSender, MfaCryptoService mfaCrypto) {
+        this(jdbcTemplate, secretBase64, expirationSeconds, emailChallengeSender, mfaCrypto, 4, 5);
     }
 
     @Autowired
@@ -52,7 +59,9 @@ public class LoginService {
             @Value("${security.jwt.secret-base64}") String secretBase64,
             @Value("${security.jwt.expiration-seconds}") long expirationSeconds,
             EmailChallengeSender emailChallengeSender,
-            MfaCryptoService mfaCrypto) {
+            MfaCryptoService mfaCrypto,
+            @Value("${security.threat.failed-login.threshold:4}") int failedLoginAlertThreshold,
+            @Value("${security.threat.failed-login.window-minutes:5}") int failedLoginWindowMinutes) {
         this.jdbcTemplate = jdbcTemplate;
         if (secretBase64 == null || secretBase64.isBlank()) {
             throw new IllegalArgumentException("JWT_SECRET_BASE64 must be set to a random secret key.");
@@ -71,6 +80,12 @@ public class LoginService {
             throw new IllegalArgumentException("JWT expiration must be between 1 and 3600 seconds.");
         }
         this.expirationSeconds = expirationSeconds;
+        if (failedLoginAlertThreshold < 2 || failedLoginAlertThreshold > 20
+                || failedLoginWindowMinutes < 1 || failedLoginWindowMinutes > 60) {
+            throw new IllegalArgumentException("Failed-login alert threshold/window is outside supported bounds.");
+        }
+        this.failedLoginAlertThreshold = failedLoginAlertThreshold;
+        this.failedLoginWindowMinutes = failedLoginWindowMinutes;
         this.emailChallengeSender = emailChallengeSender;
         this.mfaCrypto = mfaCrypto;
     }
@@ -448,21 +463,23 @@ public class LoginService {
                         + "VALUES (?, 'LOGIN_FAILURE', 'FAILURE', ?, 'Sign in rejected')",
                 userId, ip);
         jdbcTemplate.update(
-                "INSERT INTO security_events (user_id, event_type, severity, risk_score, anomaly_detected, ip_address) "
-                        + "VALUES (?, 'FAILED_LOGIN', ?, ?, ?, ?)",
+                "INSERT INTO security_events (user_id, event_type, severity, risk_score, anomaly_detected, ip_address, "
+                        + "alert_title, detection_reason) VALUES (?, 'FAILED_LOGIN', ?, ?, ?, ?, 'Failed sign-in', "
+                        + "'A sign-in attempt was rejected. No password or token value is recorded.')",
                 userId, severity, riskScore, riskScore >= 80, ip);
         long recentFailures = countRecentFailures(userId, ip);
-        if (recentFailures >= 5) {
+        if (recentFailures >= failedLoginAlertThreshold + 2) {
             int escalated = jdbcTemplate.update(
                     "UPDATE security_events SET severity = 'CRITICAL', risk_score = 100, anomaly_detected = TRUE "
                             + "WHERE id = (SELECT id FROM security_events WHERE event_type = 'MULTIPLE_FAILED_LOGINS' "
-                            + "AND timestamp >= CURRENT_TIMESTAMP - INTERVAL '10 minutes' "
+                            + "AND timestamp >= CURRENT_TIMESTAMP - (? * INTERVAL '1 minute') "
                             + "AND ip_address = ? AND user_id IS NOT DISTINCT FROM ? "
-                            + "ORDER BY timestamp DESC LIMIT 1)", ip, userId);
+                            + "ORDER BY timestamp DESC LIMIT 1)", failedLoginWindowMinutes, ip, userId);
             if (escalated == 0) {
                 recordSecurityEvent(userId, "MULTIPLE_FAILED_LOGINS", "CRITICAL", 100, true, ip);
             }
-        } else if (recentFailures >= 3 && !hasRecentAlert(userId, ip, "MULTIPLE_FAILED_LOGINS")) {
+        } else if (recentFailures >= failedLoginAlertThreshold
+                && !hasRecentAlert(userId, ip, "MULTIPLE_FAILED_LOGINS")) {
             recordSecurityEvent(userId, "MULTIPLE_FAILED_LOGINS", "HIGH",
                     (int) Math.min(100, recentFailures * 20), true, ip);
         }
@@ -471,18 +488,18 @@ public class LoginService {
     private long countRecentFailures(UUID userId, String ip) {
         Long count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM security_events WHERE event_type = 'FAILED_LOGIN' "
-                        + "AND timestamp >= CURRENT_TIMESTAMP - INTERVAL '10 minutes' "
+                        + "AND timestamp >= CURRENT_TIMESTAMP - (? * INTERVAL '1 minute') "
                         + "AND ip_address = ? AND user_id IS NOT DISTINCT FROM ?",
-                Long.class, ip, userId);
+                Long.class, failedLoginWindowMinutes, ip, userId);
         return count == null ? 0 : count;
     }
 
     private boolean hasRecentAlert(UUID userId, String ip, String eventType) {
         Long count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM security_events WHERE event_type = ? "
-                        + "AND timestamp >= CURRENT_TIMESTAMP - INTERVAL '10 minutes' "
+                        + "AND timestamp >= CURRENT_TIMESTAMP - (? * INTERVAL '1 minute') "
                         + "AND ip_address = ? AND user_id IS NOT DISTINCT FROM ?",
-                Long.class, eventType, ip, userId);
+                Long.class, eventType, failedLoginWindowMinutes, ip, userId);
         return count != null && count > 0;
     }
 
@@ -510,9 +527,21 @@ public class LoginService {
     private void recordSecurityEvent(UUID userId, String eventType, String severity,
                                      int riskScore, boolean anomaly, String ipAddress) {
         jdbcTemplate.update(
-                "INSERT INTO security_events (user_id, event_type, severity, risk_score, anomaly_detected, ip_address) "
-                        + "VALUES (?, ?, ?, ?, ?, ?)",
-                userId, eventType, severity, riskScore, anomaly, safeIp(ipAddress));
+                "INSERT INTO security_events (user_id, event_type, severity, risk_score, anomaly_detected, ip_address, "
+                        + "alert_title, detection_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                userId, eventType, severity, riskScore, anomaly, safeIp(ipAddress),
+                eventType.replace('_', ' '), detectionReason(eventType, riskScore));
+    }
+
+    private String detectionReason(String eventType, int riskScore) {
+        return switch (eventType) {
+            case "NEW_DEVICE_LOGIN" -> "The account signed in using a device fingerprint not seen on previous successful sessions.";
+            case "NEW_IP_LOGIN" -> "The account signed in from a source IP not present in its successful login history.";
+            case "UNUSUAL_LOGIN_TIME" -> "The sign-in occurred in the configured unusual UTC-hour window for this account.";
+            case "MULTIPLE_FAILED_LOGINS" -> "The account and source IP reached the configured failed-login threshold within the detection window.";
+            case "MFA_FAILURE" -> "A multi-factor verification attempt failed.";
+            default -> "Rule " + eventType + " flagged this event with risk score " + riskScore + ".";
+        };
     }
 
     private String safeIp(String ipAddress) {

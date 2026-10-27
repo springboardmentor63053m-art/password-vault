@@ -167,16 +167,25 @@ export const getActivities = ({ search = '', page = 0, size = 50 } = {}) => {
 };
 
 export const getVaultOverview = () => request('/api/admin/vaults/overview');
-export const getAnalytics = () => request('/api/admin/analytics');
+export const getAnalytics = ({ from, to, search = '', severity = 'ALL', status = 'ALL', page = 0, size = 10, sort = 'NEWEST' } = {}) => {
+  const query = new URLSearchParams({ search, severity, status,
+    page: String(page), size: String(size), sort });
+  if (from) query.set('from', from);
+  if (to) query.set('to', to);
+  return request(`/api/admin/analytics?${query}`);
+};
+export const getSecurityEvent = (eventId) => request(
+  `/api/admin/analytics/events/${encodeURIComponent(eventId)}`,
+);
 
 export const resolveSecurityEvent = (eventId) => request(
   `/api/admin/analytics/events/${encodeURIComponent(eventId)}/resolve`,
   { method: 'PATCH' },
 );
 
-export const updateSecurityEventStatus = (eventId, status) => request(
+export const updateSecurityEventStatus = (eventId, status, notes = '') => request(
   `/api/admin/analytics/events/${encodeURIComponent(eventId)}/status`,
-  { method: 'PATCH', body: JSON.stringify({ status }) },
+  { method: 'PATCH', body: JSON.stringify({ status, notes }) },
 );
 
 export const getSystemOverview = () => request('/api/admin/settings');

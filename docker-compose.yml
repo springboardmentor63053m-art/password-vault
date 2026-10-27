@@ -32,9 +32,10 @@ services:
       - ./database/bootstrap-app-user.sql:/bootstrap/app-user.sql:ro
       - ./database/schema.sql:/bootstrap/schema.sql:ro
     entrypoint: ["/bin/sh", "-ec"]
-    command: |
-      psql -h postgres -U postgres -d securevault_db -v ON_ERROR_STOP=1 -f /bootstrap/app-user.sql
-      psql -h postgres -U postgres -d securevault_db -v ON_ERROR_STOP=1 -f /bootstrap/schema.sql
+    command:
+      - >-
+        psql -h postgres -U postgres -d securevault_db -v ON_ERROR_STOP=1 -f /bootstrap/app-user.sql;
+        psql -h postgres -U postgres -d securevault_db -v ON_ERROR_STOP=1 -f /bootstrap/schema.sql
 
   # Unified Spring Boot Backend Service (Auth, Admin Dashboard API & Vault foundations)
   backend:
@@ -56,6 +57,8 @@ services:
       JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:?Set JWT_SECRET_BASE64 before starting Compose}
       MFA_ENCRYPTION_KEY_BASE64: ${MFA_ENCRYPTION_KEY_BASE64:-${JWT_SECRET_BASE64:?Set JWT_SECRET_BASE64 before starting Compose}}
       JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-900}
+      SECUREVAULT_FAILED_LOGIN_THRESHOLD: ${SECUREVAULT_FAILED_LOGIN_THRESHOLD:-4}
+      SECUREVAULT_FAILED_LOGIN_WINDOW_MINUTES: ${SECUREVAULT_FAILED_LOGIN_WINDOW_MINUTES:-5}
       SECUREVAULT_TRUSTED_PROXY_CIDRS: ${SECUREVAULT_TRUSTED_PROXY_CIDRS:-}
       SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
       SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
