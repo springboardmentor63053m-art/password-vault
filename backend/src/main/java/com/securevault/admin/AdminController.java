@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.UUID;
+import java.time.LocalDate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.format.annotation.DateTimeFormat;
 
 @CrossOrigin(origins = {"http://localhost:3001", "http://127.0.0.1:3001"})
 @Validated
@@ -113,8 +115,23 @@ public class AdminController {
     }
 
     @GetMapping("/analytics")
-    public AdminService.AnalyticsOverview analytics() {
-        return adminService.analytics();
+    public AdminService.AnalyticsOverview analytics(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "") @Size(max = 120) String search,
+            @RequestParam(defaultValue = "ALL") String severity,
+            @RequestParam(defaultValue = "ALL") String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "NEWEST") String sort) {
+        LocalDate end = to == null ? LocalDate.now(java.time.ZoneOffset.UTC) : to;
+        LocalDate start = from == null ? end.minusDays(6) : from;
+        return adminService.analytics(start, end, search, severity, status, page, size, sort);
+    }
+
+    @GetMapping("/analytics/events/{eventId}")
+    public AdminService.SecurityEventDetails securityEvent(@PathVariable UUID eventId) {
+        return adminService.securityEvent(eventId);
     }
 
     @PatchMapping("/analytics/events/{eventId}/resolve")
@@ -129,7 +146,7 @@ public class AdminController {
             @PathVariable UUID eventId,
             @Valid @RequestBody SecurityEventStatusRequest body,
             HttpServletRequest request) {
-        adminService.updateSecurityEventStatus(eventId, body.status(),
+        adminService.updateSecurityEventStatus(eventId, body.status(), body.notes(),
                 AdminAuthenticationInterceptor.principal(request), clientIpResolver.resolve(request));
         return ResponseEntity.noContent().build();
     }
@@ -141,7 +158,8 @@ public class AdminController {
 
     public record UserStatusRequest(@NotNull Boolean active) {}
     public record SecurityEventStatusRequest(
-            @NotBlank @Pattern(regexp = "OPEN|INVESTIGATING|RESOLVED") String status) {}
+            @NotBlank @Pattern(regexp = "OPEN|INVESTIGATING|RESOLVED|FALSE_POSITIVE") String status,
+            @Size(max = 1000) String notes) {}
     public record UserRoleRequest(
             @NotBlank @Pattern(regexp = "ROLE_USER|ROLE_TEAM_MEMBER|ROLE_ADMIN") String role,
             @NotBlank @Size(max = 72) @BcryptPasswordLength String currentPassword) {

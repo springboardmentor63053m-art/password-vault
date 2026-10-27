@@ -1,6 +1,8 @@
 package com.securevault.admin;
 
 import com.securevault.common.SessionTokenUtils;
+import com.securevault.common.SecurityEventRecorder;
+import org.springframework.beans.factory.annotation.Autowired;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -24,12 +26,22 @@ public class AdminAuthenticationInterceptor implements HandlerInterceptor {
 
     private final JdbcTemplate jdbcTemplate;
     private final SecretKey signingKey;
+    private final SecurityEventRecorder securityEventRecorder;
 
     public AdminAuthenticationInterceptor(
             JdbcTemplate jdbcTemplate,
             @Value("${security.jwt.secret-base64}") String secretBase64) {
+        this(jdbcTemplate, secretBase64, new SecurityEventRecorder(jdbcTemplate,
+                com.securevault.common.ClientIpResolver.withoutTrustedProxies()));
+    }
+
+    @Autowired
+    public AdminAuthenticationInterceptor(JdbcTemplate jdbcTemplate,
+            @Value("${security.jwt.secret-base64}") String secretBase64,
+            SecurityEventRecorder securityEventRecorder) {
         this.jdbcTemplate = jdbcTemplate;
         this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretBase64.trim()));
+        this.securityEventRecorder = securityEventRecorder;
     }
 
     @Override
@@ -41,6 +53,7 @@ public class AdminAuthenticationInterceptor implements HandlerInterceptor {
 
         String token = bearerToken(request.getHeader("Authorization"));
         if (token == null) {
+            securityEventRecorder.recordAccessDenied(request);
             writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHENTICATED",
                     "Sign in with an administrator account to continue.");
             return false;
@@ -50,6 +63,7 @@ public class AdminAuthenticationInterceptor implements HandlerInterceptor {
         try {
             claims = Jwts.parser().verifyWith(signingKey).build().parseSignedClaims(token).getPayload();
         } catch (JwtException | IllegalArgumentException exception) {
+            securityEventRecorder.recordAccessDenied(request);
             writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHENTICATED",
                     "Your session is invalid or has expired. Sign in again.");
             return false;
@@ -85,12 +99,14 @@ public class AdminAuthenticationInterceptor implements HandlerInterceptor {
                 SessionTokenUtils.fingerprint(token), userId);
 
         if (activeSessions.isEmpty()) {
+            securityEventRecorder.recordAccessDenied(request);
             writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "SESSION_REVOKED",
                     "Your session is no longer active. Sign in again.");
             return false;
         }
         AdminPrincipal principal = activeSessions.get(0);
         if (principal == null) {
+            securityEventRecorder.recordAccessDenied(request);
             writeError(response, HttpServletResponse.SC_FORBIDDEN, "ADMIN_REQUIRED",
                     "This dashboard is available only to administrator accounts.");
             return false;

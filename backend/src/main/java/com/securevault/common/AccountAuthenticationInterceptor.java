@@ -23,12 +23,22 @@ public class AccountAuthenticationInterceptor implements HandlerInterceptor {
     private static final String ATTRIBUTE = "secureVaultAccount";
     private final JdbcTemplate jdbcTemplate;
     private final SecretKey signingKey;
+    private final SecurityEventRecorder securityEventRecorder;
 
     public AccountAuthenticationInterceptor(
             JdbcTemplate jdbcTemplate,
             @Value("${security.jwt.secret-base64}") String secretBase64) {
+        this(jdbcTemplate, secretBase64, new SecurityEventRecorder(jdbcTemplate,
+                ClientIpResolver.withoutTrustedProxies()));
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public AccountAuthenticationInterceptor(JdbcTemplate jdbcTemplate,
+            @Value("${security.jwt.secret-base64}") String secretBase64,
+            SecurityEventRecorder securityEventRecorder) {
         this.jdbcTemplate = jdbcTemplate;
         this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretBase64.trim()));
+        this.securityEventRecorder = securityEventRecorder;
     }
 
     @Override
@@ -39,6 +49,7 @@ public class AccountAuthenticationInterceptor implements HandlerInterceptor {
         String token = authorization != null && authorization.regionMatches(true, 0, "Bearer ", 0, 7)
                 ? authorization.substring(7).trim() : "";
         if (token.isBlank() || token.length() > 4096) {
+            securityEventRecorder.recordAccessDenied(request);
             writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHENTICATED", "Sign in to continue.");
             return false;
         }
@@ -48,6 +59,7 @@ public class AccountAuthenticationInterceptor implements HandlerInterceptor {
             Claims claims = Jwts.parser().verifyWith(signingKey).build().parseSignedClaims(token).getPayload();
             userId = UUID.fromString(claims.getSubject());
         } catch (JwtException | IllegalArgumentException exception) {
+            securityEventRecorder.recordAccessDenied(request);
             writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "UNAUTHENTICATED",
                     "Your session is invalid or has expired. Sign in again.");
             return false;
@@ -64,6 +76,7 @@ public class AccountAuthenticationInterceptor implements HandlerInterceptor {
                         result.getString("email")),
                 SessionTokenUtils.fingerprint(token), userId);
         if (sessions.isEmpty()) {
+            securityEventRecorder.recordAccessDenied(request);
             writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "SESSION_REVOKED",
                     "Your session is no longer active. Sign in again.");
             return false;

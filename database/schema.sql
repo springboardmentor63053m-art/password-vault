@@ -203,8 +203,32 @@ CREATE TABLE IF NOT EXISTS security_events (
     is_resolved BOOLEAN NOT NULL DEFAULT FALSE,
     status VARCHAR(20) NOT NULL DEFAULT 'OPEN', -- 'OPEN', 'INVESTIGATING', 'RESOLVED'
     ip_address VARCHAR(45) NULL,
-    timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    alert_title VARCHAR(200),
+    detection_reason TEXT,
+    resolution_notes TEXT,
+    reviewed_by UUID NULL REFERENCES users(id) ON DELETE SET NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE security_events ADD COLUMN IF NOT EXISTS alert_title VARCHAR(200);
+ALTER TABLE security_events ADD COLUMN IF NOT EXISTS detection_reason TEXT;
+ALTER TABLE security_events ADD COLUMN IF NOT EXISTS resolution_notes TEXT;
+ALTER TABLE security_events ADD COLUMN IF NOT EXISTS reviewed_by UUID NULL REFERENCES users(id) ON DELETE SET NULL;
+ALTER TABLE security_events ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP;
+UPDATE security_events SET alert_title = INITCAP(REPLACE(event_type, '_', ' ')) WHERE alert_title IS NULL;
+UPDATE security_events SET detection_reason = 'Detected by rule ' || event_type WHERE detection_reason IS NULL;
+
+CREATE TABLE IF NOT EXISTS security_event_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID NOT NULL REFERENCES security_events(id) ON DELETE CASCADE,
+    reviewer_id UUID NULL REFERENCES users(id) ON DELETE SET NULL,
+    previous_status VARCHAR(20),
+    new_status VARCHAR(20) NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+REVOKE UPDATE, DELETE ON security_event_history FROM securevault_app;
 
 -- Keep existing installations compatible as threat statuses are introduced.
 ALTER TABLE security_events ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'OPEN';
@@ -248,6 +272,32 @@ DROP TRIGGER IF EXISTS trg_securevault_vault_access_burst ON audit_logs;
 CREATE TRIGGER trg_securevault_vault_access_burst
 AFTER INSERT ON audit_logs
 FOR EACH ROW EXECUTE FUNCTION securevault_detect_vault_access_burst();
+
+-- Treat future credential-share and permission-change audit entries as reviewable alerts.
+CREATE OR REPLACE FUNCTION securevault_detect_credential_sharing()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.status <> 'SUCCESS' OR (
+        NEW.action_type NOT ILIKE 'CREDENTIAL_SHARED'
+        AND NEW.action_type NOT ILIKE 'CREDENTIAL_SHARE_%'
+        AND NEW.action_type NOT ILIKE 'SHARE_PERMISSION_%'
+    ) THEN
+        RETURN NEW;
+    END IF;
+
+    INSERT INTO security_events
+        (user_id, event_type, severity, risk_score, anomaly_detected, ip_address, alert_title, detection_reason)
+    VALUES
+        (NEW.user_id, 'CREDENTIAL_SHARED', 'MEDIUM', 50, TRUE, NEW.ip_address,
+         'Credential sharing activity', 'A successful credential share or share-permission change was recorded.');
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_securevault_credential_sharing ON audit_logs;
+CREATE TRIGGER trg_securevault_credential_sharing
+AFTER INSERT ON audit_logs
+FOR EACH ROW EXECUTE FUNCTION securevault_detect_credential_sharing();
 
 CREATE OR REPLACE FUNCTION securevault_detect_weak_credential()
 RETURNS TRIGGER AS $$

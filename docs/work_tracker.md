@@ -2,7 +2,7 @@
 
 **Project:** SecureVault — Integrated Password Vault and Secure Credential Sharing Management System
 **Team:** Infosys Springboard Team 3
-**Updated:** October 26, 2026
+**Updated:** October 27, 2026
 **Scope:** Current `TEAM-3` implementation and the contribution history being carried to `3-RABISHANKAR`.
 
 ## Status at a glance
@@ -13,7 +13,7 @@
 | Registration, login, and session lifecycle | Implemented | BCrypt, opaque registration response, rate limiting, lockout, validation, session and device records. |
 | IP and sign-in risk telemetry | Implemented | IP, successful/failed login, new device, repeated failures, and unusual-time signals feed audit/security data. |
 | Admin dashboard and user/role management | Implemented | Role-protected API; password confirmation and audit trail for administrator role changes. |
-| Threat analysis and security score | Implemented with data-source limits | Uses auth/security events and password-health aggregates; no plaintext password inspection. |
+| Threat analytics dashboard | Implemented with data-source limits | Date-filtered live summary, trends, alert search/filter/sort/pagination, supporting audit details, investigation notes/history, False Positive status, and rule-based access-denial/login signals. No plaintext password inspection. |
 | TOTP authenticator MFA | Implemented | User and admin settings, locally generated QR, manual key, verification before enable, code required at each login once enabled. |
 | Risk-based email MFA | Implemented; SMTP is deployment-configured | New device/IP or unusual-time sign-ins can require a six-digit email code. Delivery depends on valid SMTP settings. |
 | Audit trail search and export | Implemented | Searchable/paginated records; CSV and `.xlsx` export of matching records, up to 50,000. |
@@ -42,6 +42,7 @@
 - Dashboard overview, account search/details, account state controls, role controls, connected-device/session review, and device revocation.
 - Role changes require the signed-in administrator’s current password. The actor, target, prior role, and new role are recorded.
 - Threat analysis includes security events, severity/status workflow, login monitoring, password-health metadata, suspicious-vault indicators, and a security score.
+- Threat analytics is protected by Spring Security plus the existing active-session/admin-role authorization. Investigation status and notes are retained in `security_event_history` and mirrored to the audit trail.
 - Vault overview returns metadata and aggregate counts only; credential values are excluded from administrator responses.
 - The audit trail supports filtering and pagination. Export creates UTF-8 CSV or Excel `.xlsx` files locally in the browser. CSV formula-like cells are neutralized; the export is capped at 50,000 matching records.
 
@@ -68,6 +69,7 @@ The current `TEAM-3` changes consolidate authentication in `backend/`, build on 
 5. **Operational email validation:** Verify SMTP credentials and monitor delivery in each deployment; do not assume local configuration alone proves delivery.
 6. **Distributed throttling/session cache:** Integrate Redis if the application is deployed across multiple backend instances.
 7. **Production deployment:** Add deployment-specific secrets management, TLS termination, backups, monitoring, and operational rotation procedures.
+8. **Threat-data sources:** Connect the planned vault and sharing APIs to audit events; this build cannot detect credential access or sharing that is never emitted by those APIs. IP geolocation is intentionally not inferred from address changes.
 
 ## Validation notes
 
