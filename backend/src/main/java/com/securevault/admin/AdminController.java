@@ -24,7 +24,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.format.annotation.DateTimeFormat;
 
-@CrossOrigin(origins = {"http://localhost:3001", "http://127.0.0.1:3001"})
+@CrossOrigin(origins = {
+        "http://localhost:3000", "http://127.0.0.1:3000",
+        "http://localhost:3001", "http://127.0.0.1:3001"
+})
 @Validated
 @RestController
 @RequestMapping("/api/admin")

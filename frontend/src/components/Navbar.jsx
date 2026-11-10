@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Navbar({ activeView, setActiveView, currentUser, onLogout }) {
+export default function Navbar({ activeView, setActiveView, currentUser, onLogout, isAdmin }) {
   return (
     <header className="navbar">
       <div className="nav-container">
@@ -35,6 +35,12 @@ export default function Navbar({ activeView, setActiveView, currentUser, onLogou
               >
                 <i className="fa-solid fa-vault"></i> Vault Demo
               </button>
+              <button
+                className={`nav-link-btn admin-link ${activeView === 'admin' ? 'active' : ''}`}
+                onClick={() => setActiveView('admin')}
+              >
+                <i className="fa-solid fa-shield-halved"></i> Admin Console
+              </button>
             </>
           ) : (
             <>
@@ -44,9 +50,16 @@ export default function Navbar({ activeView, setActiveView, currentUser, onLogou
               >
                 <i className="fa-solid fa-vault"></i> My Vault
               </button>
+              <button
+                className={`nav-link-btn admin-link ${activeView === 'admin' ? 'active' : ''}`}
+                onClick={() => setActiveView('admin')}
+              >
+                <i className="fa-solid fa-shield-halved"></i> Admin Console
+              </button>
               <div className="user-profile-pill">
                 <i className="fa-solid fa-circle-user"></i>
                 <span className="user-name">{currentUser.username || currentUser.email}</span>
+                {isAdmin && <span className="admin-pill-tag">Admin</span>}
               </div>
               <button className="logout-btn" onClick={onLogout} aria-label="Sign out" title="Sign out">
                 <i className="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i>

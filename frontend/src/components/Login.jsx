@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { completeLoginMfa, loginUser } from '../services/api';
 
-export default function Login({ onLoginSuccess, onNavigateRegister }) {
+export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateAdmin }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -249,6 +249,14 @@ export default function Login({ onLoginSuccess, onNavigateRegister }) {
                   Create an account
                 </button>
               </p>
+              {onNavigateAdmin && (
+                <p style={{ marginTop: '10px' }}>
+                  Need administrative tools?{' '}
+                  <button type="button" className="switch-auth-link" onClick={onNavigateAdmin}>
+                    Open Admin Console
+                  </button>
+                </p>
+              )}
             </footer>
             </>}
           </div>

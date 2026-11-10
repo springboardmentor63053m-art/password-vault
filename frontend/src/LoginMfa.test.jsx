@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { completeLoginMfa, loginUser } from "../frontend/src/services/api";
-import { completeAdminMfa, setUserRole, signInAdmin } from "./adminApi";
+import { completeLoginMfa, loginUser } from "./services/api";
+import { completeAdminMfa, setUserRole, signInAdmin } from "./admin/adminApi";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -69,3 +69,4 @@ test("admin challenge issues no session until verification and role updates incl
   const roleUpdate = fetchMock.mock.calls.find(([path]) => path.includes("/role"));
   expect(JSON.parse(roleUpdate[1].body)).toEqual({ role: "ROLE_ADMIN", currentPassword: "admin-password" });
 });
+

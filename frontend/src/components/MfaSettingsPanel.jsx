@@ -98,3 +98,4 @@ export default function MfaSettingsPanel({ getStatus, startSetup, confirmSetup, 
     </section>
   );
 }
+

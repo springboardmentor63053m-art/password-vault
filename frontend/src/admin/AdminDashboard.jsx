@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import "./App.css";
-import MfaSettingsPanel from "./MfaSettingsPanel";
+import "./admin.css";
+import MfaSettingsPanel from "../components/MfaSettingsPanel";
 import { exportAuditTrail } from "./auditExport";
 import {
   AdminApiError,
@@ -26,6 +26,7 @@ import {
   signInAdmin,
   signOutAdmin,
   updateSecurityEventStatus,
+  readStoredToken,
 } from "./adminApi";
 
 const PAGE_SIZE = 10;
@@ -66,7 +67,7 @@ function errorMessage(error) {
   return "The request could not be completed. Please try again.";
 }
 
-function AdminSignIn({ onSignedIn, initialMessage = "" }) {
+function AdminSignIn({ onSignedIn, onNavigateToVault, initialMessage = "" }) {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
@@ -103,10 +104,10 @@ function AdminSignIn({ onSignedIn, initialMessage = "" }) {
   return (
     <main className="admin-auth-screen">
       <div className="admin-auth-wrap">
-        <a className="admin-auth-brand" href="http://localhost:3000/" aria-label="SecureVault user portal">
+        <div className="admin-auth-brand" onClick={onNavigateToVault} style={{ cursor: "pointer" }} role="button" aria-label="SecureVault user portal">
           <span className="admin-brand-mark"><i className="fa-solid fa-shield-halved" /></span>
           <span><strong>SecureVault</strong><small>SECURE ACCESS PLATFORM</small></span>
-        </a>
+        </div>
         <section className="admin-auth-card" aria-labelledby="admin-login-title">
           <aside className="admin-auth-story">
             <div className="auth-story-topline"><span className="auth-eyebrow-dot" /> ADMINISTRATOR ACCESS</div>
@@ -142,7 +143,11 @@ function AdminSignIn({ onSignedIn, initialMessage = "" }) {
             </form>
             <div className="admin-auth-separator"><span /> <small>SECURE CONNECTION</small> <span /></div>
             <div className="admin-auth-footnote"><i className="fa-solid fa-circle-check" /><span>Your account role and active session are verified by the server on every request.</span></div>
-            <a className="user-portal-link" href="http://localhost:3000/"><i className="fa-solid fa-arrow-left" /> Back to SecureVault user sign in</a>
+            {onNavigateToVault && (
+              <button type="button" className="user-portal-link" onClick={onNavigateToVault} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                <i className="fa-solid fa-arrow-left" /> Back to SecureVault user portal
+              </button>
+            )}
           </div>
         </section>
         <p className="auth-legal-line">SecureVault <span>·</span> Administrator console <span>·</span> Protected workspace</p>
@@ -224,7 +229,7 @@ function SecurityEventDetails({ details, status, notes, onStatusChange, onNotesC
   </div>;
 }
 
-function App() {
+export default function AdminDashboard({ onNavigateToVault, onSignedOut, currentUser }) {
   const [authState, setAuthState] = useState("checking");
   const [authMessage, setAuthMessage] = useState("");
   const [admin, setAdmin] = useState(null);
@@ -291,8 +296,7 @@ function App() {
 
   useEffect(() => {
     let mounted = true;
-    let token = null;
-    try { token = sessionStorage.getItem("securevault_admin_jwt"); } catch { /* storage unavailable */ }
+    const token = readStoredToken();
     if (!token) {
       setAuthState("signed-out");
       return () => { mounted = false; };
@@ -302,13 +306,12 @@ function App() {
       setAdmin(identity);
       setAuthState("signed-in");
     }).catch((error) => {
-      clearAdminSession();
       if (!mounted) return;
       setAuthMessage(error.status === 403 ? "This account does not have administrator access." : "Your administrator session has expired. Sign in again.");
       setAuthState("signed-out");
     });
     return () => { mounted = false; };
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     if (authState !== "signed-in") return undefined;
@@ -377,6 +380,7 @@ function App() {
   const handleSignOut = async () => {
     try { await signOutAdmin(); } catch { clearAdminSession(); }
     setAdmin(null); setSelectedUser(null); setAuthState("signed-out"); setActivePage("overview");
+    onSignedOut?.();
   };
 
   const navigate = (page) => {
@@ -533,8 +537,26 @@ function App() {
     system: { eyebrow: "PLATFORM STATUS", title: "System health", description: "Check the backend, database, session policy, and operational totals." },
   }), [admin?.username]);
 
-  if (authState === "checking") return <main className="admin-auth-screen"><div className="auth-checking"><span className="admin-brand-mark"><i className="fa-solid fa-shield-halved" /></span><i className="fa-solid fa-spinner fa-spin" /> Checking your administrator session…</div></main>;
-  if (authState !== "signed-in") return <AdminSignIn onSignedIn={handleSignIn} initialMessage={authMessage} />;
+  if (authState === "checking") {
+    return (
+      <main className="admin-auth-screen">
+        <div className="auth-checking">
+          <span className="admin-brand-mark"><i className="fa-solid fa-shield-halved" /></span>
+          <i className="fa-solid fa-spinner fa-spin" /> Checking your administrator session…
+        </div>
+      </main>
+    );
+  }
+
+  if (authState !== "signed-in") {
+    return (
+      <AdminSignIn
+        onSignedIn={handleSignIn}
+        onNavigateToVault={onNavigateToVault}
+        initialMessage={authMessage}
+      />
+    );
+  }
 
   const pageTitle = pages[activePage];
   const activeEvents = analytics?.events?.filter((event) => !event.resolved) || [];
@@ -650,15 +672,41 @@ function App() {
     <div className="admin-shell">
       {sidebarOpen && <button className="sidebar-scrim" onClick={() => setSidebarOpen(false)} aria-label="Close navigation" />}
       <aside className={`admin-sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
-        <a className="sidebar-brand" href="#overview" onClick={(event) => { event.preventDefault(); navigate("overview"); }}><span className="admin-brand-mark"><i className="fa-solid fa-shield-halved" /></span><span><strong>SecureVault</strong><small>ADMIN CONSOLE</small></span></a>
+        <div className="sidebar-brand" onClick={() => navigate("overview")} style={{ cursor: "pointer" }} role="button"><span className="admin-brand-mark"><i className="fa-solid fa-shield-halved" /></span><span><strong>SecureVault</strong><small>ADMIN CONSOLE</small></span></div>
         <div className="sidebar-section-label">WORKSPACE</div>
-        <nav className="sidebar-nav" aria-label="Administrator navigation">{NAV_ITEMS.map((item) => <button key={item.id} className={`sidebar-nav-item ${activePage === item.id ? "selected" : ""}`} onClick={() => navigate(item.id)}><i className={item.icon} /><span>{item.label}</span>{item.id === "security" && overview?.securityAlerts > 0 && <b className="sidebar-alert-count">{overview.securityAlerts}</b>}</button>)}</nav>
+        <nav className="sidebar-nav" aria-label="Administrator navigation">
+          {NAV_ITEMS.map((item) => <button key={item.id} className={`sidebar-nav-item ${activePage === item.id ? "selected" : ""}`} onClick={() => navigate(item.id)}><i className={item.icon} /><span>{item.label}</span>{item.id === "security" && overview?.securityAlerts > 0 && <b className="sidebar-alert-count">{overview.securityAlerts}</b>}</button>)}
+          {onNavigateToVault && (
+            <button className="sidebar-nav-item vault-return-item" onClick={onNavigateToVault}>
+              <i className="fa-solid fa-vault" />
+              <span>Back to My Vault</span>
+            </button>
+          )}
+        </nav>
         <div className="sidebar-spacer" />
         <div className="sidebar-privacy-card"><div className="privacy-card-icon"><i className="fa-solid fa-lock" /></div><strong>Private by design</strong><p>Admin views show activity and totals. Vault secrets stay encrypted.</p><button onClick={() => navigate("vaults")}>Learn about privacy <i className="fa-solid fa-arrow-right" /></button></div>
         <div className="sidebar-user"><span className="sidebar-user-avatar">{initials(admin?.username)}</span><span className="sidebar-user-copy"><strong>{admin?.username || "Administrator"}</strong><small>{admin?.email || "ROLE_ADMIN"}</small></span><button onClick={handleSignOut} aria-label="Sign out" title="Sign out"><i className="fa-solid fa-arrow-right-from-bracket" /></button></div>
       </aside>
       <main className="admin-main">
-        <header className="admin-topbar"><div className="topbar-leading"><button className="mobile-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation"><i className="fa-solid fa-bars" /></button><div className="topbar-breadcrumb"><span>SecureVault</span><i className="fa-solid fa-chevron-right" /><strong>{NAV_ITEMS.find((item) => item.id === activePage)?.label}</strong></div></div><div className="topbar-actions"><form className="quick-search" onSubmit={jumpToUsers}><i className="fa-solid fa-magnifying-glass" /><input value={quickSearch} onChange={(event) => setQuickSearch(event.target.value)} placeholder="Find an account" aria-label="Search accounts" /><kbd>↵</kbd></form><span className="topbar-divider" /><span className="connection-indicator"><i /> API connected</span><button className="refresh-button" onClick={() => setRefreshKey((key) => key + 1)} aria-label="Refresh dashboard" title="Refresh dashboard"><i className={`fa-solid fa-rotate ${summaryLoading ? "fa-spin" : ""}`} /></button><button className="topbar-signout" onClick={handleSignOut}><i className="fa-solid fa-arrow-right-from-bracket" aria-hidden="true" /><span>Sign out</span></button></div></header>
+        <header className="admin-topbar">
+          <div className="topbar-leading">
+            <button className="mobile-menu-button" onClick={() => setSidebarOpen(true)} aria-label="Open navigation"><i className="fa-solid fa-bars" /></button>
+            <div className="topbar-breadcrumb"><span>SecureVault</span><i className="fa-solid fa-chevron-right" /><strong>{NAV_ITEMS.find((item) => item.id === activePage)?.label}</strong></div>
+          </div>
+          <div className="topbar-actions">
+            {onNavigateToVault && (
+              <button className="vault-shortcut-btn" onClick={onNavigateToVault} title="Switch to user vault view">
+                <i className="fa-solid fa-vault" />
+                <span>My Vault</span>
+              </button>
+            )}
+            <form className="quick-search" onSubmit={jumpToUsers}><i className="fa-solid fa-magnifying-glass" /><input value={quickSearch} onChange={(event) => setQuickSearch(event.target.value)} placeholder="Find an account" aria-label="Search accounts" /><kbd>↵</kbd></form>
+            <span className="topbar-divider" />
+            <span className="connection-indicator"><i /> API connected</span>
+            <button className="refresh-button" onClick={() => setRefreshKey((key) => key + 1)} aria-label="Refresh dashboard" title="Refresh dashboard"><i className={`fa-solid fa-rotate ${summaryLoading ? "fa-spin" : ""}`} /></button>
+            <button className="topbar-signout" onClick={handleSignOut}><i className="fa-solid fa-arrow-right-from-bracket" aria-hidden="true" /><span>Sign out</span></button>
+          </div>
+        </header>
         <div className="admin-content"><PageTitle {...pageTitle}><div className="page-title-actions"><span className="date-chip"><i className="fa-regular fa-calendar" /> {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}</span>{summaryLoading && <span className="updating-label"><i className="fa-solid fa-circle-notch fa-spin" /> Syncing</span>}</div></PageTitle>{content}</div>
       </main>
 
@@ -681,4 +729,3 @@ function App() {
   );
 }
 
-export default App;
