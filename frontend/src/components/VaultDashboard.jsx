@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import MfaSettingsPanel from '../../../src/MfaSettingsPanel';
+import MfaSettingsPanel from './MfaSettingsPanel';
 import { confirmTotpSetup, disableTotp, getMfaStatus, startTotpSetup } from '../services/api';
 
 const INITIAL_VAULT_ITEMS = [

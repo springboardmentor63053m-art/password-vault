@@ -1337,3 +1337,44 @@
 .mfa-qr-copy { display: grid; gap: 6px; max-width: 260px; color: #99a9bd; font-size: 10px; line-height: 1.6; }
 .mfa-qr-copy strong { color: #e2e8f0; font-size: 11px; }
 @media (max-width: 620px) { .mfa-qr-setup { align-items: flex-start; flex-direction: column; }.mfa-qr-frame { width: min(216px, 100%); } }
+
+
+/* Integrated Admin View overrides */
+.main-content.admin-view {
+  display: block;
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.nav-link-btn.admin-link {
+  color: #67e8f9;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(8, 145, 178, 0.1);
+}
+
+.nav-link-btn.admin-link:hover {
+  background: rgba(8, 145, 178, 0.22);
+  color: #a5f3fc;
+}
+
+.nav-link-btn.admin-link.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.35), rgba(6, 182, 212, 0.35));
+  border-color: #38bdf8;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+}
+
+.admin-pill-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #38bdf8;
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 999px;
+  margin-left: 6px;
+}

@@ -24,23 +24,37 @@ export class AdminApiError extends Error {
   }
 }
 
-const readStoredToken = () => {
+export const readStoredToken = () => {
   try {
-    return sessionStorage.getItem(TOKEN_KEY);
+    return sessionStorage.getItem(TOKEN_KEY) || sessionStorage.getItem('securevault_jwt');
   } catch {
     return null;
   }
 };
 
 const storeAdminSession = (token, user) => {
-  sessionStorage.setItem(TOKEN_KEY, token);
-  sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+  try {
+    sessionStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+    sessionStorage.setItem('securevault_jwt', token);
+    sessionStorage.setItem('securevault_user', JSON.stringify({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role || 'ROLE_ADMIN',
+      roles: ['ROLE_ADMIN'],
+    }));
+  } catch {
+    // Storage may be restricted
+  }
 };
 
 export const clearAdminSession = () => {
   try {
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem('securevault_jwt');
+    sessionStorage.removeItem('securevault_user');
   } catch {
     // Storage may be disabled in restricted browser contexts.
   }
@@ -69,6 +83,17 @@ const request = async (path, { token = readStoredToken(), ...options } = {}) => 
     );
   }
   return data;
+};
+
+export const checkIsAdmin = async () => {
+  const token = readStoredToken();
+  if (!token) return false;
+  try {
+    const admin = await request('/api/admin/me', { token });
+    return admin?.role === 'ROLE_ADMIN';
+  } catch {
+    return false;
+  }
 };
 
 export const signInAdmin = async ({ identifier, password }) => {
@@ -198,3 +223,4 @@ export const signOutAdmin = async () => {
     clearAdminSession();
   }
 };
+

@@ -129,3 +129,4 @@ export function exportAuditTrail(rows, format) {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   }), "xlsx");
 }
+
