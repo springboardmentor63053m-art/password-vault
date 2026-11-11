@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Login from './components/Login';
 import Register from './components/Register';
-import VaultDashboard from './components/VaultDashboard';
+import UserDashboard from './components/UserDashboard';
 import AdminDashboard from './admin/AdminDashboard';
 import { getStoredAuth, logoutUser } from './services/api';
 import { checkIsAdmin, clearAdminSession } from './admin/adminApi';
@@ -72,7 +72,7 @@ export default function App() {
         )}
 
         {activeView === 'vault' && (
-          <VaultDashboard currentUser={currentUser} onLogout={handleLogout} />
+          <UserDashboard currentUser={currentUser} onLogout={handleLogout} />
         )}
 
         {activeView === 'admin' && (
