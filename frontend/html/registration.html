@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Account | Credential Vault</title>
+    <link rel="stylesheet" href="../css/login.css">
+</head>
+<body>
+<main class="auth-layout">
+
+    <section class="brand-panel">
+        <a href="login.html" class="brand">
+            <span class="brand-logo">♙</span>
+            <span>Credential Vault</span>
+        </a>
+
+        <div class="brand-content">
+            <div class="security-pill">
+                <span class="status-dot"></span>
+                Your security starts here
+            </div>
+
+            <h1>One vault.<br>Complete control.</h1>
+
+            <p class="brand-description">
+                Create your secure workspace to organize and protect
+                your credentials. Built to keep sensitive information
+                accessible only to authorized users.
+            </p>
+
+            <div class="trust-items">
+                <span>♧ &nbsp; Secure account access</span>
+                <span>✧ &nbsp; Role-based permissions</span>
+            </div>
+        </div>
+
+        <p class="brand-footer">
+            Protected with industry-standard security
+        </p>
+    </section>
+
+    <section class="form-panel">
+        <nav class="top-nav">
+            <span>Already have an account?</span>
+            <a href="login.html">Sign in</a>
+        </nav>
+
+        <div class="form-content">
+            <p class="eyebrow">Get started</p>
+            <h2>Create your account</h2>
+            <p class="form-description">
+                Enter your details to set up your Credential Vault account.
+            </p>
+
+            <form id="registerForm">
+                <div class="field">
+                    <label for="name">Full name</label>
+                    <input
+                            type="text"
+                            id="name"
+                            name="name"
+                            placeholder="Enter your full name"
+                            autocomplete="name"
+                            maxlength="100"
+                            required
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="email">Email address</label>
+                    <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            placeholder="you@company.com"
+                            autocomplete="email"
+                            maxlength="150"
+                            required
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="password">Password</label>
+                    <div class="password-wrapper">
+                        <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                placeholder="At least 8 characters"
+                                autocomplete="new-password"
+                                minlength="8"
+                                maxlength="72"
+                                required
+                        >
+                        <button
+                                type="button"
+                                id="togglePassword"
+                                class="password-toggle"
+                                aria-label="Show password"
+                        >◎</button>
+                    </div>
+                </div>
+
+                <button type="submit" id="registerButton"
+                        class="primary-button">
+                    <span>Create account</span>
+                    <span aria-hidden="true">→</span>
+                </button>
+
+                <p id="message" class="message"
+                   role="status" aria-live="polite"></p>
+            </form>
+
+            <div class="secure-note">
+                <span aria-hidden="true">♙</span>
+                Your information is handled securely
+            </div>
+        </div>
+    </section>
+</main>
+
+<script src="../javascript/auth.js"></script>
+</body>
+</html>

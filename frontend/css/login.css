@@ -1,0 +1,471 @@
+
+/* =====================================
+   LOGIN PAGE - OLD PURPLE DESIGN
+===================================== */
+
+.auth-layout {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: #f5f5fa;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+/* LEFT BRAND PANEL */
+
+.brand-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 45px 55px;
+    color: white;
+    background: linear-gradient(145deg, #17153d, #29236b, #4436a5);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: white;
+    text-decoration: none;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.brand-logo {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: #6554e8;
+    font-size: 22px;
+}
+
+.brand-content {
+    max-width: 480px;
+    margin: auto 0;
+}
+
+.security-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 16px;
+    border-radius: 30px;
+    background: rgba(255,255,255,0.12);
+    color: #d9d4ff;
+    font-size: 13px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #6ee7b7;
+}
+
+.brand-content h1 {
+    margin: 28px 0 18px;
+    color: white;
+    font-size: 45px;
+    line-height: 1.2;
+}
+
+.brand-description {
+    color: #d1cfee;
+    font-size: 15px;
+    line-height: 1.9;
+}
+
+.trust-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 22px;
+    margin-top: 32px;
+    color: #e2dfff;
+    font-size: 13px;
+}
+
+.brand-footer {
+    color: #b7b1e3;
+    font-size: 12px;
+}
+
+/* RIGHT FORM PANEL */
+
+.form-panel {
+    display: flex;
+    flex-direction: column;
+    padding: 35px 55px;
+    background: #ffffff;
+}
+
+.top-nav {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    color: #77778a;
+    font-size: 13px;
+}
+
+.top-nav a {
+    color: #4d32f5;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.top-nav a:hover {
+    text-decoration: underline;
+}
+
+.form-content {
+    width: 100%;
+    max-width: 410px;
+    margin: auto;
+    padding: 35px 0;
+}
+
+.eyebrow {
+    color: #6554e8;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.form-content h2 {
+    margin: 12px 0;
+    color: #20203d;
+    font-size: 32px;
+}
+
+.form-description {
+    margin-bottom: 32px;
+    color: #85859a;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+/* INPUTS */
+
+.field {
+    margin-bottom: 22px;
+}
+
+.field label {
+    display: block;
+    margin-bottom: 9px;
+    color: #30304b;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.field input {
+    box-sizing: border-box;
+    width: 100%;
+    height: 52px;
+    padding: 0 15px;
+    border: 1px solid #e1e1ec;
+    border-radius: 9px;
+    outline: none;
+    background: #f9f9fc;
+    color: #252541;
+    font-size: 14px;
+    transition: 0.2s;
+}
+
+.field input:focus {
+    border-color: #6554e8;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(101,84,232,0.10);
+}
+
+.field input::placeholder {
+    color: #aaaabc;
+}
+
+.password-wrapper {
+    position: relative;
+}
+
+.password-wrapper input {
+    padding-right: 50px;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #77778a;
+    cursor: pointer;
+    font-size: 19px;
+}
+
+/* FORGOT PASSWORD */
+
+.forgot-password {
+    display: flex;
+    justify-content: flex-end;
+    margin: -5px 0 23px;
+}
+
+.forgot-password a {
+    color: #4d32f5;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* BUTTON */
+
+.primary-button {
+    width: 100%;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border: none;
+    border-radius: 9px;
+    background: linear-gradient(110deg, #4d32f5, #7058ed);
+    color: white;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 15px rgba(77,50,245,0.20);
+    transition: 0.2s;
+}
+
+.primary-button:hover {
+    background: linear-gradient(110deg, #3922d4, #5c43df);
+    transform: translateY(-2px);
+}
+
+.primary-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* MESSAGE */
+
+.message {
+    min-height: 20px;
+    margin-top: 13px;
+    font-size: 13px;
+}
+
+.message.success {
+    color: #16834d;
+}
+
+.message.error {
+    color: #d43d4c;
+}
+
+/* SECURITY NOTE */
+
+.secure-note {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 9px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eeeeF4;
+    color: #9292a5;
+    font-size: 12px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 850px) {
+    .brand-panel {
+        padding: 35px 30px;
+    }
+
+    .form-panel {
+        padding: 30px;
+    }
+
+    .brand-content h1 {
+        font-size: 35px;
+    }
+}
+
+@media (max-width: 650px) {
+    .auth-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .brand-panel {
+        min-height: 270px;
+        padding: 25px;
+    }
+
+    .brand-content {
+        margin: 35px 0 15px;
+    }
+
+    .brand-content h1 {
+        font-size: 30px;
+    }
+
+    .brand-footer {
+        display: none;
+    }
+
+    .form-panel {
+        min-height: 500px;
+        padding: 25px;
+    }
+
+    .top-nav {
+        justify-content: center;
+    }
+}
+
+/* =====================================
+   REGISTRATION PAGE
+   OLD PURPLE DESIGN
+===================================== */
+
+/* Slightly wider form for registration */
+
+.form-content {
+    max-width: 430px;
+}
+
+/* Registration heading */
+
+.form-content h2 {
+    font-size: 31px;
+}
+
+/* Registration field spacing */
+
+#registerForm .field {
+    margin-bottom: 19px;
+}
+
+#registerForm .field input {
+    height: 50px;
+}
+
+/* Create account button */
+
+#registerForm .primary-button {
+    margin-top: 8px;
+    height: 52px;
+}
+
+/* Registration brand panel */
+
+.brand-panel {
+    background: linear-gradient(
+        145deg,
+        #17153d,
+        #29236b,
+        #4436a5
+    );
+}
+
+/* Responsive registration form */
+
+@media (max-height: 750px) and (min-width: 651px) {
+    .form-content {
+        padding: 15px 0;
+    }
+
+    .form-description {
+        margin-bottom: 20px;
+    }
+
+    #registerForm .field {
+        margin-bottom: 14px;
+    }
+
+    .secure-note {
+        margin-top: 18px;
+        padding-top: 14px;
+    }
+}
+
+@media (max-width: 650px) {
+    .form-content {
+        max-width: 100%;
+    }
+}
+
+/* =====================================
+   COMMON LOGIN & REGISTRATION OVERRIDES
+===================================== */
+
+.form-content {
+    max-width: 430px;
+}
+
+.form-content h2 {
+    font-size: 31px;
+}
+
+.form-description {
+    margin-bottom: 25px;
+}
+
+.field {
+    margin-bottom: 19px;
+}
+
+.field input {
+    height: 50px;
+}
+
+.primary-button {
+    height: 52px;
+    margin-top: 8px;
+}
+
+.secure-note {
+    margin-top: 25px;
+    padding-top: 20px;
+}
+
+/* Login-specific spacing */
+
+#loginForm .forgot-password {
+    margin: -5px 0 20px;
+}
+
+/* Short screen adjustment */
+
+@media (max-height: 750px) and (min-width: 651px) {
+    .form-content {
+        padding: 15px 0;
+    }
+
+    .form-description {
+        margin-bottom: 20px;
+    }
+
+    .field {
+        margin-bottom: 14px;
+    }
+
+    .secure-note {
+        margin-top: 18px;
+        padding-top: 14px;
+    }
+}
+
+/* Mobile adjustment */
+
+@media (max-width: 650px) {
+    .form-content {
+        max-width: 100%;
+    }
+}
+

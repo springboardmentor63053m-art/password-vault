@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In | Credential Vault</title>
+    <link rel="stylesheet" href="../css/login.css">
+</head>
+<body>
+<main class="auth-layout">
+
+    <section class="brand-panel">
+        <a href="login.html" class="brand">
+            <span class="brand-logo">♙</span>
+            <span>Credential Vault</span>
+        </a>
+
+        <div class="brand-content">
+            <div class="security-pill">
+                <span class="status-dot"></span>
+                Secure workspace
+            </div>
+
+            <h1>Your credentials,<br>protected by design.</h1>
+
+            <p class="brand-description">
+                Access sensitive account information with confidence.
+                Your vault keeps every credential organized, encrypted,
+                and under your control.
+            </p>
+
+            <div class="trust-items">
+                <span>♧ &nbsp; Encrypted by default</span>
+                <span>✧ &nbsp; Verified access</span>
+            </div>
+        </div>
+
+        <p class="brand-footer">
+            Protected with industry-standard security
+        </p>
+    </section>
+
+    <section class="form-panel">
+        <nav class="top-nav">
+            <span>New to Credential Vault?</span>
+            <a href="registration.html">Create an account</a>
+        </nav>
+
+        <div class="form-content">
+            <p class="eyebrow">Welcome back</p>
+            <h2>Sign in to your vault</h2>
+            <p class="form-description">
+                Enter your details to securely access your workspace.
+            </p>
+
+            <form id="loginForm">
+                <div class="field">
+                    <label for="email">Email address</label>
+                    <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            placeholder="you@company.com"
+                            autocomplete="username"
+                            maxlength="150"
+                            required
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="password">Password</label>
+                    <div class="password-wrapper">
+                        <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                placeholder="Enter your password"
+                                autocomplete="current-password"
+                                required
+                        >
+                        <button
+                                type="button"
+                                id="togglePassword"
+                                class="password-toggle"
+                                aria-label="Show password"
+                        >◎</button>
+                    </div>
+                </div>
+                <div class="forgot-password">
+                    <a href="forgot-password.html">Forgot password?</a>
+                </div>
+
+                <button type="submit" id="loginButton" class="primary-button">
+                    <span>Sign in</span>
+                    <span aria-hidden="true">→</span>
+                </button>
+
+                <p id="message" class="message"
+                   role="status" aria-live="polite"></p>
+            </form>
+
+            <div class="secure-note">
+                <span aria-hidden="true">♙</span>
+                Your session is securely encrypted
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<script src="../javascript/auth.js"></script>
+</body>
+</html>

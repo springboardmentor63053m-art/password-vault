@@ -1,0 +1,229 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Breach Detection | Secure Vault Admin</title>
+
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <a href="admin-dashboard.html" class="logo">
+            🔐 SecureVault
+        </a>
+
+        <nav class="sidebar-nav">
+
+            <a href="admin-dashboard.html" class="nav-link active">
+                <span>📊</span> Dashboard
+            </a>
+
+            <a href="admin-users.html" class="nav-link">
+                <span>👥</span> User Management
+            </a>
+
+            <a href="staff-management.html" class="nav-link">
+                <span>🧑‍💼</span> Staff Management
+            </a>
+
+            <a href="security-monitoring.html" class="nav-link">
+                <span>🛡️</span> Security Monitoring
+            </a>
+
+            <a href="threat-analytics.html" class="nav-link">
+                <span>📈</span> Threat Analytics
+            </a>
+
+            <!-- BREACH DETECTION -->
+            <a href="breach-detection.html" class="nav-link">
+                <span>🚨</span> Breach Detection
+            </a>
+
+            <a href="admin-notification-history.html" class="nav-link">
+                <span>🔔</span> Notification History
+            </a>
+
+            <a href="admin-profile-security.html" class="nav-link">
+                <span>👤</span> Profile & Security
+            </a>
+        </nav>
+
+        <button id="logoutBtn" class="logout-btn">
+            🚪 Logout
+        </button>
+
+    </aside>
+
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content breach-page">
+
+        <header class="dashboard-header">
+            <div>
+                <h1>Breach Detection</h1>
+                <p>
+                    Monitor compromised passwords across all registered users.
+                </p>
+            </div>
+        </header>
+
+
+        <!-- SCAN INFORMATION -->
+        <section class="content-section">
+
+            <div class="section-heading">
+                <h2>Global Password Security Scan</h2>
+            </div>
+
+            <p>
+                Scan the saved credentials of all regular users against
+                known compromised password records using the Have I Been
+                Pwned  Passwords service.
+            </p>
+
+            <p>
+                Passwords are checked securely on the backend.
+                Actual passwords and password hashes are never displayed
+                in this Admin panel.
+            </p>
+
+            <button id="scanBreachesBtn" class="primary-btn">
+                🔍 Scan All Users' Passwords
+            </button>
+
+            <p id="scanStatus" class="status-message">
+                Click the scan button to check users' saved credentials.
+            </p>
+
+        </section>
+
+
+        <!-- SECURITY WARNING -->
+        <div id="breachWarning" class="breach-warning" hidden>
+
+            <div class="warning-icon">⚠️</div>
+
+            <div>
+                <h3>Security Alert: Compromised Credentials Detected!</h3>
+
+                <p id="breachWarningMessage">
+                    Some users have passwords appearing in known breach records.
+                    Notify the affected users so they can change their passwords.
+                </p>
+            </div>
+
+        </div>
+
+
+        <!-- STATISTICS -->
+        <section class="stats-grid">
+
+            <div class="stat-card">
+                <div class="stat-icon">🔍</div>
+                <h3>Passwords Checked</h3>
+                <h2 id="passwordsChecked">0</h2>
+                <p>Total credentials scanned</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">🚨</div>
+                <h3>Compromised Passwords</h3>
+                <h2 id="compromisedPasswords">0</h2>
+                <p>Credentials found in breach records</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <h3>Safe Passwords</h3>
+                <h2 id="safePasswords">0</h2>
+                <p>Credentials not found in checked records</p>
+            </div>
+
+        </section>
+
+
+        <!-- SCAN RESULTS -->
+        <section class="content-section">
+
+            <div class="section-heading">
+                <h2>Compromised User Credentials</h2>
+
+                <span id="resultCount">
+                    0 compromised credentials found
+                </span>
+            </div>
+
+            <div class="table-wrapper">
+
+                <table>
+
+                    <thead>
+                    <tr>
+                        <th>User Name</th>
+                        <th>Email</th>
+                        <th>Credential</th>
+                        <th>Status</th>
+                        <th>Breach Occurrences</th>
+                        <th>Action</th>
+                    </tr>
+                    </thead>
+
+                    <tbody id="breachResultsBody">
+
+                    <tr>
+                        <td colspan="6" style="text-align:center;">
+                            No scan results available.
+                            Start a global scan to see results.
+                        </td>
+                    </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+
+        <!-- SECURITY INFORMATION -->
+        <section class="content-section">
+
+            <div class="section-heading">
+                <h2>Security Recommendations</h2>
+            </div>
+
+            <ul>
+                <li>Notify users immediately when compromised credentials are detected.</li>
+                <li>Ask affected users to change their passwords.</li>
+                <li>Encourage users to avoid reusing passwords across websites.</li>
+                <li>Run periodic security scans to identify newly exposed passwords.</li>
+            </ul>
+
+            <p>
+                <strong>Note:</strong> A password appearing in known breach
+                records does not necessarily mean the specific user's account
+                has been compromised.
+            </p>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<script src="../javascript/logout.js"></script>
+<script src="../javascript/breach-detection.js"></script>
+
+</body>
+</html>

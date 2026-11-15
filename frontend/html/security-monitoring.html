@@ -1,0 +1,195 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Monitoring | SecureVault</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <a href="admin-dashboard.html" class="logo">
+            🛡️ SecureVault
+        </a>
+
+        <p class="sidebar-label">ADMIN CONSOLE</p>
+
+        <nav class="sidebar-nav">
+
+            <a href="admin-dashboard.html" class="nav-link">
+                <span>📊</span> Dashboard
+            </a>
+
+            <a href="admin-users.html" class="nav-link">
+                <span>👥</span> User Management
+            </a>
+
+            <a href="staff-management.html" class="nav-link">
+                <span>🧑‍💼</span> Staff Management
+            </a>
+
+            <a href="security-monitoring.html" class="nav-link active">
+                <span>🛡️</span> Security Monitoring
+            </a>
+
+            <a href="breach-detection.html" class="nav-link ">
+                🚨 Breach Detection
+            </a>
+
+            <a href="admin-notification-history.html" class="nav-link">
+                <span>🔔</span> Notification History
+            </a>
+
+            <a href="threat-analytics.html" class="nav-link">
+                <span>📈</span> Threat Analytics
+            </a>
+
+            <a href="admin-profile-security.html" class="nav-link">
+                <span>👤</span> Profile & Security
+            </a>
+
+        </nav>
+
+        <div class="sidebar-footer">
+            <button type="button" class="logout-btn" id="logoutButton">
+                🚪 Logout
+            </button>
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <!-- HEADER -->
+        <header class="dashboard-header">
+
+            <div>
+                <p class="page-label">SECURITY CENTER</p>
+
+                <h1>🛡️ Security Monitoring</h1>
+
+                <p class="header-description">
+                    Monitor login activity and security events across SecureVault.
+                </p>
+            </div>
+
+            <div class="header-actions">
+
+                <span>
+                    Welcome, <strong id="adminName">Admin</strong>
+                </span>
+
+                <button
+                        type="button"
+                        class="primary-button"
+                        id="refreshSecurityButton"
+                >
+                    🔄 Refresh
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <p id="message" role="status" aria-live="polite"></p>
+
+
+        <!-- SECURITY STATISTICS -->
+        <section class="stats-container">
+
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <h3>Successful Logins</h3>
+                <p id="successfulLogins">0</p>
+            </div>
+
+
+            <div class="stat-card">
+                <div class="stat-icon">❌</div>
+                <h3>Failed Logins</h3>
+                <p id="failedLogins">0</p>
+            </div>
+
+
+            <div class="stat-card">
+                <div class="stat-icon">📋</div>
+                <h3>Total Security Events</h3>
+                <p id="totalSecurityEvents">0</p>
+            </div>
+
+
+            <div class="stat-card">
+                <div class="stat-icon">⚠️</div>
+                <h3>Suspicious Activity</h3>
+                <p id="suspiciousActivity">0</p>
+            </div>
+
+        </section>
+
+
+        <!-- SECURITY EVENTS TABLE -->
+        <section class="content-section">
+
+            <div class="section-heading">
+
+                <div>
+                    <h2>🔍 Security Events</h2>
+
+                    <p>
+                        Recent login and security activity.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="table-container">
+
+                <table>
+
+                    <thead>
+                    <tr>
+                        <th>📧 User Email</th>
+                        <th>🔐 Event Type</th>
+                        <th>📌 Status</th>
+                        <th>📝 Details</th>
+                        <th>🕒 Date & Time</th>
+                    </tr>
+                    </thead>
+
+
+                    <tbody id="securityEventsTable">
+
+                    <tr>
+                        <td colspan="5">
+                            Loading security events...
+                        </td>
+                    </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<script src="../javascript/security-monitoring.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sharing History | Secure Vault</title>
+    <link rel="stylesheet" href="../css/user-dashboard.css">
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <aside class="sidebar">
+        <div class="logo">
+            <h2>🔐 Secure Vault</h2>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="user-dashboard.html" class="nav-link">
+                🏠 Dashboard
+            </a>
+
+            <a href="credentials.html" class="nav-link">
+                🔑 My Credentials
+            </a>
+
+            <a href="password-generator.html" class="nav-link">
+                ⚙️ Password Generator
+            </a>
+
+            <a href="password-checker.html" class="nav-link">
+                🛡️ Password Strength
+            </a>
+
+            <a href="security-notifications.html" class="nav-link">
+                🔔 Security Notifications
+            </a>
+
+            <a href="shared-credentials.html" class="nav-link">
+                🤝 Shared Credentials
+            </a>
+
+            <a href="sharing-history.html" class="nav-link">
+                📋 Sharing History
+            </a>
+
+            <a href="profile-security.html" class="nav-link">
+                👤 Profile & Security
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button type="button" id="logoutBtn">Logout</button>
+        </div>
+    </aside>
+
+    <main class="main-content">
+
+        <header class="dashboard-header">
+            <div>
+                <h1>Sharing History</h1>
+                <p>Track and manage credentials you have shared with others.</p>
+            </div>
+        </header>
+
+        <section class="content-card">
+
+            <h2>My Sharing History</h2>
+
+            <p>
+                View shared credentials, recipient details and access permissions.
+            </p>
+
+            <div id="sharingHistoryList">
+                <p>No sharing history available.</p>
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+<script src="../javascript/sharing-history.js"></script>
+<script src="../javascript/logout.js"></script>
+</body>
+</html>

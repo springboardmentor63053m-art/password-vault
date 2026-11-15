@@ -1,0 +1,186 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>User Management | SecureVault</title>
+
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <a href="admin-dashboard.html" class="logo">
+            🛡️ SecureVault
+        </a>
+
+        <p class="sidebar-label">ADMIN CONSOLE</p>
+
+        <nav class="sidebar-nav">
+
+            <a href="admin-dashboard.html" class="nav-link">
+                <span>📊</span> Dashboard
+            </a>
+
+            <a href="admin-users.html" class="nav-link active">
+                <span>👥</span> User Management
+            </a>
+
+            <a href="staff-management.html" class="nav-link">
+                <span>🧑‍💼</span> Staff Management
+            </a>
+
+            <a href="breach-detection.html" class="nav-link">
+                🚨 Breach Detection
+            </a>
+
+            <a href="admin-notification-history.html" class="nav-link">
+                <span>🔔</span> Notification History
+            </a>
+
+            <a href="security-monitoring.html" class="nav-link">
+                <span>🛡️</span> Security Monitoring
+            </a>
+
+            <a href="threat-analytics.html" class="nav-link">
+                <span>📈</span> Threat Analytics
+            </a>
+
+            <a href="admin-profile-security.html" class="nav-link">
+                <span>👤</span> Profile & Security
+            </a>
+
+        </nav>
+
+        <div class="sidebar-footer">
+
+            <button type="button" id="logoutButton" class="logout-btn">
+                🚪 Logout
+            </button>
+
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <!-- PAGE HEADER -->
+        <header class="dashboard-header">
+
+            <div>
+
+                <p class="page-label">ADMINISTRATION</p>
+
+                <h1>👥 User Management</h1>
+
+                <p class="header-description">
+                    View, search and manage registered accounts.
+                </p>
+
+            </div>
+
+
+            <div class="header-actions">
+
+                <span id="adminName">Admin</span>
+
+                <button
+                        type="button"
+                        id="refreshButton"
+                        class="primary-button">
+
+                    🔄 Refresh
+
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <p id="message" role="status" aria-live="polite"></p>
+
+
+        <!-- REGISTERED USERS -->
+        <section class="content-section">
+
+            <div class="section-heading">
+
+                <div>
+
+                    <h2>👥 Registered Users</h2>
+
+                    <p>
+                        Manage all accounts in your vault.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- SEARCH -->
+            <div class="search-container">
+
+                <input
+                        type="search"
+                        id="search"
+                        placeholder="🔍 Search by name, email or role..."
+                        aria-label="Search users"
+                >
+
+            </div>
+
+
+            <!-- USERS TABLE -->
+            <div class="table-container">
+
+                <table>
+
+                    <thead>
+                    <tr>
+                        <th>🆔 ID</th>
+                        <th>👤 Name</th>
+                        <th>📧 Email</th>
+                        <th>🛡️ Role</th>
+                        <th>📌 Status</th>
+                        <th>📅 Created</th>
+                        <th>⚙️ Action</th>
+                    </tr>
+                    </thead>
+
+
+                    <tbody id="usersTable">
+
+                    <tr>
+                        <td colspan="7">
+                            Loading users...
+                        </td>
+                    </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<script src="../javascript/admin-users.js"></script>
+
+</body>
+</html>

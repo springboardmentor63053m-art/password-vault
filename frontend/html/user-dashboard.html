@@ -1,0 +1,171 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Vault | User Dashboard</title>
+    <link rel="stylesheet" href="../css/user-dashboard.css">
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <aside class="sidebar">
+
+        <div class="logo">
+            <h2>🔐 Secure Vault</h2>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="user-dashboard.html" class="nav-link active">📊 Dashboard</a>
+            <a href="credentials.html" class="nav-link">🔐 My Credentials</a>
+            <a href="password-generator.html" class="nav-link">🔑 Password Generator</a>
+            <a href="password-checker.html" class="nav-link">🛡️ Password Strength</a>
+            <a href="security-notifications.html" class="nav-link">
+                🔔 Security Notifications
+                <span id="notificationBadge"
+                      class="notification-badge"
+                      style="display: none;">0</span>
+            </a>
+            <a href="shared-credentials.html" class="nav-link">🤝 Shared Credentials</a>
+            <a href="sharing-history.html" class="nav-link">📋 Sharing History</a>
+            <a href="profile-security.html" class="nav-link">👤 Profile & Security</a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button type="button" id="logoutBtn">Logout</button>
+        </div>
+
+    </aside>
+
+    <main class="main-content">
+
+        <header class="dashboard-header">
+            <div>
+                <span class="page-label">PERSONAL SECURITY CENTER</span>
+                <h1>Welcome to Secure Vault 👋</h1>
+                <p>Manage your credentials securely from one place.</p>
+            </div>
+        </header>
+
+        <!-- DASHBOARD STATISTICS -->
+
+        <section class="content-card dashboard-overview">
+
+            <div class="section-heading">
+                <div>
+                    <h2>Dashboard Overview</h2>
+                    <p>Your credential management summary</p>
+                </div>
+            </div>
+
+            <div class="stats-container">
+
+                <div class="stat-card stat-purple">
+                    <div class="stat-icon">🔐</div>
+                    <div>
+                        <h3>Total Credentials</h3>
+                        <p id="totalCredentials">0</p>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-blue">
+                    <div class="stat-icon">🤝</div>
+                    <div>
+                        <h3>Shared Credentials</h3>
+                        <p id="sharedCredentials">0</p>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-green">
+                    <div class="stat-icon">🕒</div>
+                    <div>
+                        <h3>Recent Credentials</h3>
+                        <p id="recentCredentials">0</p>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- QUICK ACCESS -->
+
+        <section class="content-card quick-access-section">
+
+            <div class="section-heading">
+                <div>
+                    <h2>Quick Access</h2>
+                    <p>Choose a feature to manage your digital security.</p>
+                </div>
+            </div>
+
+            <div class="quick-access-grid">
+
+                <a href="credentials.html" class="quick-card">
+                    <div class="quick-icon purple-icon">🔐</div>
+                    <h3>My Vault</h3>
+                    <p>Store, organize and manage your passwords securely.</p>
+                    <span>Open My Vault →</span>
+                </a>
+
+                <a href="password-generator.html" class="quick-card">
+                    <div class="quick-icon blue-icon">🔑</div>
+                    <h3>Password Generator</h3>
+                    <p>Create strong and random passwords for your accounts.</p>
+                    <span>Generate Password →</span>
+                </a>
+
+                <a href="password-checker.html" class="quick-card">
+                    <div class="quick-icon green-icon">🛡️</div>
+                    <h3>Password Strength</h3>
+                    <p>Evaluate password strength and improve security.</p>
+                    <span>Check Password →</span>
+                </a>
+
+                <a href="security-notifications.html" class="quick-card">
+                    <div class="quick-icon orange-icon">🔔</div>
+                    <h3>Security Notifications</h3>
+                    <p>View important security alerts and notifications sent by your administrator.</p>
+                    <span>View Notifications →</span>
+                </a>
+
+                <a href="shared-credentials.html" class="quick-card">
+                    <div class="quick-icon orange-icon">🤝</div>
+                    <h3>Shared Credentials</h3>
+                    <p>Access credentials securely shared with you.</p>
+                    <span>View Shared →</span>
+                </a>
+
+                <a href="sharing-history.html" class="quick-card">
+                    <div class="quick-icon pink-icon">📋</div>
+                    <h3>Sharing History</h3>
+                    <p>Review and manage your credential sharing activity.</p>
+                    <span>View History →</span>
+                </a>
+
+                <a href="profile-security.html" class="quick-card">
+                    <div class="quick-icon teal-icon">👤</div>
+                    <h3>Profile & Security</h3>
+                    <p>Manage your account information and security settings.</p>
+                    <span>Open Profile →</span>
+                </a>
+
+            </div>
+
+        </section>
+
+        <footer class="dashboard-footer">
+            <p>🔒 Your security is our priority. Keep your credentials protected.</p>
+        </footer>
+
+    </main>
+
+</div>
+
+<script src="../javascript/user-dashboard.js"></script>
+<script src="../javascript/logout.js"></script>
+</body>
+</html>

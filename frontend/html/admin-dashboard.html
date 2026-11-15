@@ -1,0 +1,293 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Admin Dashboard | SecureVault</title>
+
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <div class="logo">
+            🛡️ SecureVault
+        </div>
+
+        <p class="sidebar-label">ADMIN CONSOLE</p>
+
+        <nav class="sidebar-nav">
+
+            <a href="admin-dashboard.html" class="nav-link active">
+                <span>📊</span> Dashboard
+            </a>
+
+            <a href="admin-users.html" class="nav-link">
+                <span>👥</span> User Management
+            </a>
+
+            <a href="staff-management.html" class="nav-link">
+                <span>🧑‍💼</span> Staff Management
+            </a>
+
+            <a href="security-monitoring.html" class="nav-link">
+                <span>🛡️</span> Security Monitoring
+            </a>
+
+            <a href="threat-analytics.html" class="nav-link">
+                <span>📈</span> Threat Analytics
+            </a>
+
+            <!-- BREACH DETECTION -->
+            <a href="breach-detection.html" class="nav-link">
+                <span>🚨</span> Breach Detection
+            </a>
+
+            <a href="admin-notification-history.html" class="nav-link">
+                <span>🔔</span> Notification History
+            </a>
+
+            <a href="admin-profile-security.html" class="nav-link">
+                <span>👤</span> Profile & Security
+            </a>
+
+        </nav>
+
+        <div class="sidebar-footer">
+            <button id="logoutButton" class="logout-btn">
+                🚪 Logout
+            </button>
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <header class="dashboard-header">
+
+            <div>
+                <p class="page-label">OVERVIEW</p>
+
+                <h1>Admin Dashboard</h1>
+
+                <p class="header-description">
+                    Welcome back, <span id="adminName">Admin</span>.
+                    Manage and monitor your SecureVault system.
+                </p>
+            </div>
+
+            <button id="refreshButton" class="primary-button">
+                🔄 Refresh Data
+            </button>
+
+        </header>
+
+
+        <div id="message" role="status" aria-live="polite"></div>
+
+
+        <!-- STATISTICS -->
+        <section class="stats-container">
+
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <p>Total Users</p>
+                <h2 id="totalUsers">—</h2>
+                <span>Registered accounts</span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">🛡️</div>
+                <p>Administrators</p>
+                <h2 id="adminCount">—</h2>
+                <span>Admin accounts</span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">🧑‍💼</div>
+                <p>Managers</p>
+                <h2 id="managerCount">—</h2>
+                <span>Manager accounts</span>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">👤</div>
+                <p>Regular Users</p>
+                <h2 id="userCount">—</h2>
+                <span>User accounts</span>
+            </div>
+
+        </section>
+
+
+        <!-- ADMIN FEATURES -->
+        <section class="content-section">
+
+            <div class="section-heading">
+                <div>
+                    <h2>Administration</h2>
+                    <p>
+                        Manage your platform using the available tools.
+                    </p>
+                </div>
+            </div>
+
+
+            <div class="feature-grid">
+
+                <!-- USER MANAGEMENT -->
+                <a href="admin-users.html" class="feature-card">
+
+                    <div class="feature-icon">👥</div>
+
+                    <h3>User Management</h3>
+
+                    <p>
+                        View registered users, search accounts
+                        and manage user access.
+                    </p>
+
+                    <span class="feature-link">
+                        Manage Users →
+                    </span>
+
+                </a>
+
+
+                <!-- STAFF MANAGEMENT -->
+                <a href="staff-management.html" class="feature-card">
+
+                    <div class="feature-icon">🧑‍💼</div>
+
+                    <h3>Staff Management</h3>
+
+                    <p>
+                        Create and manage administrator
+                        and manager accounts.
+                    </p>
+
+                    <span class="feature-link">
+                        Manage Staff →
+                    </span>
+
+                </a>
+
+
+                <!-- SECURITY MONITORING -->
+                <a href="security-monitoring.html" class="feature-card">
+
+                    <div class="feature-icon">🔐</div>
+
+                    <h3>Security Monitoring</h3>
+
+                    <p>
+                        Monitor successful logins, failed attempts
+                        and security events.
+                    </p>
+
+                    <span class="feature-link">
+                        Monitor Security →
+                    </span>
+
+                </a>
+
+
+                <!-- THREAT ANALYTICS -->
+                <a href="threat-analytics.html" class="feature-card">
+
+                    <div class="feature-icon">📊</div>
+
+                    <h3>Threat Analytics</h3>
+
+                    <p>
+                        Analyze security threats and
+                        identify suspicious activity.
+                    </p>
+
+                    <span class="feature-link">
+                        View Analytics →
+                    </span>
+
+                </a>
+
+
+                <!-- BREACH DETECTION -->
+                <a href="breach-detection.html" class="feature-card">
+
+                    <div class="feature-icon">🚨</div>
+
+                    <h3>Breach Detection</h3>
+
+                    <p>
+                        Scan users' stored passwords against
+                        known breached-password datasets and
+                        notify affected users.
+                    </p>
+
+                    <span class="feature-link">
+                        Detect Breaches →
+                    </span>
+
+                </a>
+
+
+                <!-- NOTIFICATION HISTORY -->
+                <a href="admin-notification-history.html" class="feature-card">
+
+                    <div class="feature-icon">🔔</div>
+
+                    <h3>Notification History</h3>
+
+                    <p>
+                        Track breach notifications sent to users,
+                        monitor read status and review notification history.
+                    </p>
+
+                    <span class="feature-link">
+                 View Notification History →
+                 </span>
+
+                </a>
+
+                <!-- PROFILE & SECURITY -->
+                <a href="admin-profile-security.html" class="feature-card">
+
+                    <div class="feature-icon">👤</div>
+
+                    <h3>Profile & Security</h3>
+
+                    <p>
+                        Manage your administrator profile,
+                        change your password and review
+                        your account security.
+                    </p>
+
+                    <span class="feature-link">
+                        Manage Profile →
+                    </span>
+
+                </a>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<script src="../javascript/admin-dashboard.js"></script>
+
+</body>
+</html>

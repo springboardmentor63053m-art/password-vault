@@ -1,0 +1,370 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Profile & Security | SecureVault</title>
+
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <div class="logo">
+            🛡 SecureVault
+        </div>
+
+        <p class="sidebar-label">ADMIN CONSOLE</p>
+
+        <nav class="sidebar-nav">
+
+            <a href="admin-dashboard.html" class="nav-link active">
+                <span>📊</span> Dashboard
+            </a>
+
+            <a href="admin-users.html" class="nav-link">
+                <span>👥</span> User Management
+            </a>
+
+            <a href="staff-management.html" class="nav-link">
+                <span>🧑‍💼</span> Staff Management
+            </a>
+
+            <a href="breach-detection.html" class="nav-link ">
+                🚨 Breach Detection
+            </a>
+
+            <a href="admin-notification-history.html" class="nav-link">
+                <span>🔔</span> Notification History
+            </a>
+
+            <a href="security-monitoring.html" class="nav-link">
+                <span>🛡️</span> Security Monitoring
+            </a>
+
+            <a href="threat-analytics.html" class="nav-link">
+                <span>📈</span> Threat Analytics
+            </a>
+
+            <a href="admin-profile-security.html" class="nav-link">
+                <span>👤</span> Profile & Security
+            </a>
+
+        </nav>
+        <div class="sidebar-footer">
+
+            <button id="logoutButton" class="logout-btn">
+                ↪ Logout
+            </button>
+
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <!-- PAGE HEADER -->
+        <header class="dashboard-header">
+
+            <div>
+                <p class="page-label">ACCOUNT SETTINGS</p>
+
+                <h1>Profile & Security</h1>
+
+                <p class="header-description">
+                    Manage your administrator profile and account security.
+                </p>
+            </div>
+
+        </header>
+
+
+        <!-- MESSAGE -->
+        <div id="message" role="status" aria-live="polite"></div>
+
+
+        <!-- ======================================== -->
+        <!-- ADMIN PROFILE -->
+        <!-- ======================================== -->
+
+        <section class="content-section">
+
+            <div class="section-heading">
+                <div>
+                    <h2>Admin Profile</h2>
+                    <p>View and update your personal account information.</p>
+                </div>
+            </div>
+
+            <div class="profile-security-card">
+
+                <div class="profile-avatar">
+                    <span>👤</span>
+                </div>
+
+                <form id="profileForm">
+
+                    <div class="profile-form-grid">
+
+                        <div class="form-group">
+                            <label for="adminName">Full Name</label>
+
+                            <input
+                                    type="text"
+                                    id="adminName"
+                                    placeholder="Enter your name"
+                                    required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="adminEmail">Email Address</label>
+
+                            <input
+                                    type="email"
+                                    id="adminEmail"
+                                    placeholder="Enter your email"
+                                    readonly>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="adminRole">Account Role</label>
+
+                            <input
+                                    type="text"
+                                    id="adminRole"
+                                    value="ADMIN"
+                                    readonly>
+                        </div>
+
+                    </div>
+
+                    <button type="submit" class="primary-button">
+                        Save Changes
+                    </button>
+
+                </form>
+
+            </div>
+
+        </section>
+
+
+        <!-- ======================================== -->
+        <!-- CHANGE PASSWORD -->
+        <!-- ======================================== -->
+
+        <section class="content-section">
+
+            <div class="section-heading">
+                <div>
+                    <h2>Change Password</h2>
+                    <p>Update your password to keep your account secure.</p>
+                </div>
+            </div>
+
+            <div class="profile-security-card">
+
+                <form id="changePasswordForm">
+
+                    <div class="form-group">
+                        <label for="currentPassword">Current Password</label>
+
+                        <input
+                                type="password"
+                                id="currentPassword"
+                                placeholder="Enter current password"
+                                required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newPassword">New Password</label>
+
+                        <input
+                                type="password"
+                                id="newPassword"
+                                placeholder="Enter new password"
+                                required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm New Password</label>
+
+                        <input
+                                type="password"
+                                id="confirmPassword"
+                                placeholder="Confirm new password"
+                                required>
+                    </div>
+
+                    <button type="submit" class="primary-button">
+                        Update Password
+                    </button>
+
+                </form>
+
+            </div>
+
+        </section>
+
+
+        <!-- ======================================== -->
+        <!-- TWO FACTOR AUTHENTICATION -->
+        <!-- ======================================== -->
+
+        <section class="content-section">
+
+            <div class="section-heading">
+                <div>
+                    <h2>Two-Factor Authentication</h2>
+
+                    <p>
+                        Add an extra verification step to your login process.
+                    </p>
+                </div>
+            </div>
+
+
+            <!-- 2FA STATUS AND BUTTON -->
+
+            <div class="profile-security-card security-option">
+
+                <div>
+
+                    <h3>Email OTP Verification</h3>
+
+                    <p>
+                        Require a verification code sent to your registered
+                        email address during login.
+                    </p>
+
+                    <span id="twoFactorStatus" class="security-status">
+                        Not Configured
+                    </span>
+
+                </div>
+
+                <button
+                        type="button"
+                        id="twoFactorButton"
+                        class="secondary-button">
+
+                    Enable 2FA
+
+                </button>
+
+            </div>
+
+
+            <!-- ENABLE 2FA: EMAIL OTP FORM -->
+
+            <div
+                    class="profile-security-card"
+                    id="twoFactorSetupForm"
+                    style="display: none; margin-top: 20px;">
+
+                <h3>Verify Your Email</h3>
+
+                <p>
+                    We have sent a 6-digit verification code to your
+                    registered email address.
+                </p>
+
+                <form id="twoFactorOtpForm">
+
+                    <div class="form-group">
+
+                        <label for="twoFactorOtp">
+                            Enter Verification Code
+                        </label>
+
+                        <input
+                                type="text"
+                                id="twoFactorOtp"
+                                placeholder="Enter 6-digit OTP"
+                                maxlength="6"
+                                pattern="[0-9]{6}"
+                                inputmode="numeric"
+                                autocomplete="one-time-code"
+                                required>
+
+                    </div>
+
+                    <button type="submit" class="primary-button">
+                        Verify and Enable 2FA
+                    </button>
+
+                </form>
+
+            </div>
+
+
+            <!-- DISABLE 2FA: PASSWORD CONFIRMATION -->
+
+            <div
+                    class="profile-security-card"
+                    id="twoFactorDisableForm"
+                    style="display: none; margin-top: 20px;">
+
+                <h3>Disable Two-Factor Authentication</h3>
+
+                <p>
+                    Enter your current password to confirm that you want
+                    to disable email OTP verification.
+                </p>
+
+                <form id="twoFactorDisableFormElement">
+
+                    <div class="form-group">
+
+                        <label for="twoFactorCurrentPassword">
+                            Current Password
+                        </label>
+
+                        <input
+                                type="password"
+                                id="twoFactorCurrentPassword"
+                                placeholder="Enter your current password"
+                                autocomplete="current-password"
+                                required>
+
+                    </div>
+
+                    <button type="submit" class="primary-button">
+                        Confirm and Disable 2FA
+                    </button>
+
+                    <button
+                            type="button"
+                            id="cancelDisable2FA"
+                            class="secondary-button">
+
+                        Cancel
+
+                    </button>
+
+                </form>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<!-- JAVASCRIPT -->
+<script src="../javascript/admin-profile-security.js"></script>
+
+</body>
+</html>

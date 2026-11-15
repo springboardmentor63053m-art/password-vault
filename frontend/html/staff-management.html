@@ -1,0 +1,241 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Management | SecureVault</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <a href="admin-dashboard.html" class="logo">
+            🛡️ SecureVault
+        </a>
+
+        <p class="sidebar-label">ADMIN CONSOLE</p>
+
+        <nav class="sidebar-nav">
+
+            <a href="admin-dashboard.html" class="nav-link">
+                <span>📊</span> Dashboard
+            </a>
+
+            <a href="admin-users.html" class="nav-link">
+                <span>👥</span> User Management
+            </a>
+
+            <a href="staff-management.html" class="nav-link active">
+                <span>🧑‍💼</span> Staff Management
+            </a>
+
+            <a href="breach-detection.html" class="nav-link ">
+                🚨 Breach Detection
+            </a>
+
+            <a href="admin-notification-history.html" class="nav-link">
+                <span>🔔</span> Notification History
+            </a>
+
+            <a href="security-monitoring.html" class="nav-link">
+                <span>🛡️</span> Security Monitoring
+            </a>
+
+            <a href="threat-analytics.html" class="nav-link">
+                <span>📈</span> Threat Analytics
+            </a>
+
+            <a href="admin-profile-security.html" class="nav-link">
+                <span>👤</span> Profile & Security
+            </a>
+
+        </nav>
+
+        <div class="sidebar-footer">
+            <button type="button" id="logoutButton" class="logout-btn">
+                🚪 Logout
+            </button>
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <!-- HEADER -->
+        <header class="dashboard-header">
+
+            <div>
+                <p class="page-label">ADMINISTRATION</p>
+
+                <h1>Staff Management</h1>
+
+                <p class="header-description">
+                    Create and manage administrator and manager accounts.
+                </p>
+            </div>
+
+            <div class="header-actions">
+
+                <span id="adminName">Admin</span>
+
+                <button type="button" id="refreshButton"
+                        class="primary-button">
+                    🔄 Refresh
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <p id="message" role="status"></p>
+
+
+        <!-- CREATE STAFF ACCOUNT -->
+        <section class="content-section">
+
+            <div class="section-heading">
+                <div>
+                    <h2>➕ Create Staff Account</h2>
+                    <p>
+                        Provide account details and assign a staff role.
+                    </p>
+                </div>
+            </div>
+
+
+            <form id="addStaffForm" class="staff-form">
+
+                <div class="field">
+                    <label for="staffName">👤 Full Name</label>
+
+                    <input
+                            type="text"
+                            id="staffName"
+                            placeholder="Enter full name"
+                            required
+                    >
+                </div>
+
+
+                <div class="field">
+                    <label for="staffEmail">📧 Email Address</label>
+
+                    <input
+                            type="email"
+                            id="staffEmail"
+                            placeholder="Enter email address"
+                            required
+                    >
+                </div>
+
+
+                <div class="field">
+                    <label for="staffPassword">🔑 Password</label>
+
+                    <input
+                            type="password"
+                            id="staffPassword"
+                            placeholder="Minimum 8 characters"
+                            minlength="8"
+                            required
+                    >
+                </div>
+
+
+                <div class="field">
+                    <label for="staffRole">🛡️ Assign Role</label>
+
+                    <select id="staffRole" required>
+                        <option value="">Select role</option>
+                        <option value="ADMIN">Administrator</option>
+                        <option value="MANAGER">Manager</option>
+                    </select>
+                </div>
+
+
+                <button type="submit" class="primary-button">
+                    ➕ Create Staff Account
+                </button>
+
+                <p id="staffMessage" role="status"></p>
+
+            </form>
+
+        </section>
+
+
+        <!-- EXISTING STAFF -->
+        <section class="content-section">
+
+            <div class="section-heading">
+                <div>
+                    <h2>👥 Existing Staff</h2>
+
+                    <p>
+                        View all administrator and manager accounts.
+                    </p>
+                </div>
+            </div>
+
+
+            <!-- SEARCH -->
+            <div class="search-container">
+
+                <input
+                        type="search"
+                        id="staffSearch"
+                        placeholder="🔍 Search staff by name, email or role..."
+                        aria-label="Search staff"
+                >
+
+            </div>
+
+
+            <!-- STAFF TABLE -->
+            <div class="table-container">
+
+                <table>
+
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>👤 Name</th>
+                        <th>📧 Email</th>
+                        <th>🛡️ Role</th>
+                        <th>📌 Status</th>
+                        <th>📅 Created</th>
+                    </tr>
+                    </thead>
+
+                    <tbody id="staffTable">
+
+                    <tr>
+                        <td colspan="6">Loading staff...</td>
+                    </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<script src="../javascript/staff-management.js"></script>
+
+</body>
+</html>
