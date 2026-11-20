@@ -1,0 +1,327 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Threat Analytics | SecureVault</title>
+
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+<div class="dashboard-container">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+
+        <a href="admin-dashboard.html" class="logo">
+            🛡️ SecureVault
+        </a>
+
+        <p class="sidebar-label">ADMIN CONSOLE</p>
+
+        <nav class="sidebar-nav">
+
+            <a href="admin-dashboard.html" class="nav-link">
+                <span>📊</span> Dashboard
+            </a>
+
+            <a href="admin-users.html" class="nav-link">
+                <span>👥</span> User Management
+            </a>
+
+            <a href="staff-management.html" class="nav-link">
+                <span>🧑‍💼</span> Staff Management
+            </a>
+
+            <a href="breach-detection.html" class="nav-link ">
+                🚨 Breach Detection
+            </a>
+
+            <a href="admin-notification-history.html" class="nav-link">
+                <span>🔔</span> Notification History
+            </a>
+
+            <a href="security-monitoring.html" class="nav-link">
+                <span>🛡️</span> Security Monitoring
+            </a>
+
+            <a href="threat-analytics.html" class="nav-link active">
+                <span>📈</span> Threat Analytics
+            </a>
+
+            <a href="admin-profile-security.html" class="nav-link">
+                <span>👤</span> Profile & Security
+            </a>
+
+        </nav>
+
+        <div class="sidebar-footer">
+
+            <button type="button" class="logout-btn" id="logoutButton">
+                🚪 Logout
+            </button>
+
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+
+        <!-- PAGE HEADER -->
+        <header class="dashboard-header">
+
+            <div>
+
+                <p class="page-label">SECURITY INTELLIGENCE</p>
+
+                <h1>📈 Threat Analytics</h1>
+
+                <p class="header-description">
+                    Monitor suspicious login activity and analyze
+                    recorded security threats.
+                </p>
+
+            </div>
+
+
+            <div class="header-actions">
+
+                <span id="adminName">Admin</span>
+
+                <button
+                        type="button"
+                        id="refreshThreatsButton"
+                        class="primary-button">
+
+                    🔄 Refresh
+
+                </button>
+
+            </div>
+
+        </header>
+
+
+        <p id="message" role="status" aria-live="polite"></p>
+
+
+        <!-- THREAT STATISTICS -->
+        <section class="stats-grid">
+
+            <!-- TOTAL THREATS -->
+            <article class="stat-card total">
+
+                <div class="card-heading">
+                    <h3>🚨 Total Threat Events</h3>
+                    <span class="card-icon">⚠️</span>
+                </div>
+
+                <p id="totalThreats" class="stat-number">—</p>
+
+                <span class="card-description">
+                    Failed logins and suspicious events
+                </span>
+
+            </article>
+
+
+            <!-- HIGH RISK -->
+            <article class="stat-card high">
+
+                <div class="card-heading">
+                    <h3>🔴 High Risk</h3>
+                    <span class="card-icon">⬆️</span>
+                </div>
+
+                <p id="highRiskThreats" class="stat-number">—</p>
+
+                <span class="card-description">
+                    Recorded suspicious login detections
+                </span>
+
+            </article>
+
+
+            <!-- MEDIUM RISK -->
+            <article class="stat-card medium">
+
+                <div class="card-heading">
+                    <h3>🟠 Medium Risk</h3>
+                    <span class="card-icon">⚠️</span>
+                </div>
+
+                <p id="mediumRiskThreats" class="stat-number">—</p>
+
+                <span class="card-description">
+                    Failed login events
+                </span>
+
+            </article>
+
+
+            <!-- LOW RISK -->
+            <article class="stat-card low">
+
+                <div class="card-heading">
+                    <h3>🟢 Low Risk</h3>
+                    <span class="card-icon">✅</span>
+                </div>
+
+                <p id="lowRiskThreats" class="stat-number">—</p>
+
+                <span class="card-description">
+                    Other risk categories
+                </span>
+
+            </article>
+
+        </section>
+
+
+        <!-- THREAT TRENDS -->
+        <section class="content-section">
+
+            <div class="section-heading">
+
+                <div>
+                    <h2>📊 Threat Trends</h2>
+
+                    <p>
+                        Threat-related events grouped by date.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div id="threatTrendChart" class="chart-container">
+
+                <p class="empty-state">
+                    Loading threat trends...
+                </p>
+
+            </div>
+
+
+            <p class="chart-note">
+                Trend data reflects the security events returned by the backend.
+            </p>
+
+        </section>
+
+
+        <!-- DETECTED THREATS -->
+        <section class="content-section">
+
+            <div class="section-heading">
+
+                <div>
+                    <h2>🔍 Detected Threats</h2>
+
+                    <p>
+                        Review threat-related events recorded by SecureVault.
+                    </p>
+                </div>
+
+                <span id="threatCountLabel" class="count-label">
+                    0 events
+                </span>
+
+            </div>
+
+
+            <!-- SEARCH AND FILTER -->
+            <div class="search-container filters">
+
+                <input
+                        type="search"
+                        id="threatSearch"
+                        placeholder="🔍 Search email, event type or details..."
+                        aria-label="Search threats"
+                >
+
+
+                <select
+                        id="severityFilter"
+                        aria-label="Filter by severity">
+
+                    <option value="ALL">All severity levels</option>
+                    <option value="HIGH">🔴 High risk</option>
+                    <option value="MEDIUM">🟠 Medium risk</option>
+                    <option value="LOW">🟢 Low risk</option>
+
+                </select>
+
+            </div>
+
+
+            <!-- THREATS TABLE -->
+            <div class="table-container table-wrapper">
+
+                <table>
+
+                    <thead>
+                    <tr>
+                        <th>📧 Email</th>
+                        <th>⚠️ Threat Type</th>
+                        <th>🚦 Severity</th>
+                        <th>📌 Status</th>
+                        <th>📝 Details</th>
+                        <th>🕒 Time</th>
+                    </tr>
+                    </thead>
+
+
+                    <tbody id="threatsTable">
+
+                    <tr>
+                        <td colspan="6">
+                            Loading threats...
+                        </td>
+                    </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+
+            <!-- TABLE FOOTER -->
+            <div class="table-footer">
+
+                <span id="tableSummary">
+                    Waiting for data...
+                </span>
+
+            </div>
+
+        </section>
+
+
+        <!-- FOOTER -->
+        <footer class="footer">
+
+            🛡️ SecureVault Threat Analytics
+
+            <span>
+                Security events are based on recorded backend data.
+            </span>
+
+        </footer>
+
+    </main>
+
+</div>
+
+
+<script src="../javascript/threat-analytics.js"></script>
+
+</body>
+</html>
