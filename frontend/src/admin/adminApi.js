@@ -24,9 +24,9 @@ export class AdminApiError extends Error {
   }
 }
 
-export const readStoredToken = () => {
+export const readStoredAdminToken = () => {
   try {
-    return sessionStorage.getItem(TOKEN_KEY) || sessionStorage.getItem('securevault_jwt');
+    return sessionStorage.getItem(TOKEN_KEY);
   } catch {
     return null;
   }
@@ -60,7 +60,7 @@ export const clearAdminSession = () => {
   }
 };
 
-const request = async (path, { token = readStoredToken(), ...options } = {}) => {
+const request = async (path, { token = readStoredAdminToken(), ...options } = {}) => {
   const headers = new Headers(options.headers || {});
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (options.body != null && !headers.has('Content-Type')) {
@@ -83,17 +83,6 @@ const request = async (path, { token = readStoredToken(), ...options } = {}) => 
     );
   }
   return data;
-};
-
-export const checkIsAdmin = async () => {
-  const token = readStoredToken();
-  if (!token) return false;
-  try {
-    const admin = await request('/api/admin/me', { token });
-    return admin?.role === 'ROLE_ADMIN';
-  } catch {
-    return false;
-  }
 };
 
 export const signInAdmin = async ({ identifier, password }) => {
@@ -120,6 +109,9 @@ export const signInAdmin = async ({ identifier, password }) => {
   } catch (error) {
     await request('/api/logout', { token, method: 'POST' }).catch(() => {});
     clearAdminSession();
+    if (error.status === 401 || error.status === 403) {
+      throw new AdminApiError('This account does not have administrator access. Use User Login instead.', 403, 'ADMIN_REQUIRED');
+    }
     throw error;
   }
 };
@@ -145,6 +137,9 @@ export const completeAdminMfa = async ({ challengeId, code }) => {
   } catch (error) {
     await request('/api/logout', { token, method: 'POST' }).catch(() => {});
     clearAdminSession();
+    if (error.status === 401 || error.status === 403) {
+      throw new AdminApiError('This account does not have administrator access. Use User Login instead.', 403, 'ADMIN_REQUIRED');
+    }
     throw error;
   }
 };
@@ -216,7 +211,7 @@ export const updateSecurityEventStatus = (eventId, status, notes = '') => reques
 export const getSystemOverview = () => request('/api/admin/settings');
 
 export const signOutAdmin = async () => {
-  const token = readStoredToken();
+  const token = readStoredAdminToken();
   try {
     if (token) await request('/api/logout', { token, method: 'POST' });
   } finally {
@@ -224,3 +219,9 @@ export const signOutAdmin = async () => {
   }
 };
 
+
+export const getSharingActivity = ({ status = 'ALL', page = 0, size = 50, type = 'ALL' } = {}) => {
+  const query = new URLSearchParams({ status, page: String(page), size: String(size) });
+  if (type !== 'ALL') query.set('type', type);
+  return request('/api/admin/shares?' + query);
+};

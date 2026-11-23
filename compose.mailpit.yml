@@ -1,0 +1,18 @@
+services:
+  mail-test:
+    image: axllent/mailpit:v1.27.4
+    ports:
+      - "127.0.0.1:${SECUREVAULT_MAILPIT_PORT:-28025}:8025"
+  backend:
+    depends_on:
+      mail-test:
+        condition: service_started
+    environment:
+      SPRING_MAIL_HOST: mail-test
+      SPRING_MAIL_PORT: "1025"
+      SPRING_MAIL_USERNAME: ""
+      SPRING_MAIL_PASSWORD: ""
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "false"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "false"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: "false"
+      SECUREVAULT_MAIL_FROM: securevault@example.test

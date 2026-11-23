@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { completeLoginMfa, loginUser } from '../services/api';
 
-export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateAdmin }) {
+export default function Login({ onLoginSuccess, onNavigateRegister }) {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,13 +43,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateAd
         return;
       }
       const user = result.data.user || { username: identifier.split('@')[0], email: identifier };
-      setStatusMessage({
-        type: 'success',
-        text: 'Login successful! Redirecting to the demo vault...',
-      });
-      setTimeout(() => {
-        onLoginSuccess(user);
-      }, 700);
+      onLoginSuccess(user);
     } else {
       setStatusMessage({
         type: 'error',
@@ -58,16 +52,9 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateAd
     }
   };
 
-  const handleOAuthDemo = (provider) => {
-    setStatusMessage({
-      type: 'info',
-      text: `${provider} sign-in is not connected in this demo.`,
-    });
-  };
-
   return (
     <div className="auth-card-wrapper">
-      <div className="auth-card">
+      <div className="auth-card user-login-card">
         {/* Left Branding Panel */}
         <aside className="auth-brand-panel">
           <div className="brand-header">
@@ -76,7 +63,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateAd
             </div>
             <h2 className="brand-title">SecureVault</h2>
             <p className="brand-subtitle">
-              Local Authentication & Vault Demo
+              Your password workspace
             </p>
           </div>
 
@@ -93,7 +80,7 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateAd
           <div className="feature-highlights">
             <div className="feature-item">
               <i className="fa-solid fa-lock"></i>
-              <span>Sample credential vault demo</span>
+              <span>Store and share credentials securely</span>
             </div>
             <div className="feature-item">
               <i className="fa-solid fa-key"></i>
@@ -111,18 +98,18 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateAd
         </aside>
 
         {/* Right Form Panel */}
-        <main className="auth-form-panel">
+        <div className="auth-form-panel">
           <div className="form-content-area">
             <header className="form-header">
-              <h1 className="form-heading">{challenge ? 'Verify it’s you' : 'Welcome Back'}</h1>
+              <h1 className="form-heading">{challenge ? 'Verify it’s you' : 'User Login'}</h1>
               <p className="form-subheading">{challenge?.method === 'EMAIL'
                 ? `A verification code was sent to ${challenge.maskedEmail}.`
                 : challenge ? 'Enter the current code from your authenticator app.'
-                  : 'Sign in to view the sample vault'}</p>
+                  : 'Sign in to your SecureVault workspace'}</p>
             </header>
 
             {statusMessage && (
-              <div className={`status-banner ${statusMessage.type}`}>
+              <div className={`status-banner ${statusMessage.type}`} role={statusMessage.type === 'error' ? 'alert' : 'status'}>
                 <i
                   className={`fa-solid ${
                     statusMessage.type === 'error'
@@ -217,50 +204,16 @@ export default function Login({ onLoginSuccess, onNavigateRegister, onNavigateAd
 
             {challenge && <button type="button" className="mfa-back-button" onClick={() => { setChallenge(null); setVerificationCode(''); setIdentifier(''); setStatusMessage(null); }}>Back to sign in</button>}
 
-            {!challenge && <><div className="form-divider">
-              <span>Social sign-in preview</span>
-            </div>
-
-            <div className="social-actions-grid">
-              <button
-                type="button"
-                className="social-btn"
-                onClick={() => handleOAuthDemo('Google')}
-              >
-                <img src="/images/google.png" alt="Google" onError={(e) => (e.target.style.display = 'none')} />
-                <i className="fa-brands fa-google social-icon-fallback"></i>
-                <span>Google</span>
-              </button>
-              <button
-                type="button"
-                className="social-btn"
-                onClick={() => handleOAuthDemo('Microsoft')}
-              >
-                <img src="/images/microsoft.png" alt="Microsoft" onError={(e) => (e.target.style.display = 'none')} />
-                <i className="fa-brands fa-microsoft social-icon-fallback"></i>
-                <span>Microsoft</span>
-              </button>
-            </div>
-
-            <footer className="form-footer">
+            {!challenge && <footer className="form-footer">
               <p>
                 Don't have an account?{' '}
                 <button type="button" className="switch-auth-link" onClick={onNavigateRegister}>
                   Create an account
                 </button>
               </p>
-              {onNavigateAdmin && (
-                <p style={{ marginTop: '10px' }}>
-                  Need administrative tools?{' '}
-                  <button type="button" className="switch-auth-link" onClick={onNavigateAdmin}>
-                    Open Admin Console
-                  </button>
-                </p>
-              )}
-            </footer>
-            </>}
+            </footer>}
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );

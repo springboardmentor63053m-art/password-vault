@@ -23,6 +23,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class LoginService {
@@ -154,7 +156,8 @@ public class LoginService {
                     newAttempts, lockUntil, user.id());
             String severity = newAttempts >= MAX_FAILED_ATTEMPTS ? "CRITICAL"
                     : newAttempts >= 3 ? "HIGH" : "MEDIUM";
-            recordLoginFailure(user.id(), ipAddress, Math.min(100, newAttempts * 20), severity);
+            recordLoginFailure(user.id(), ipAddress, Math.min(100, newAttempts * 20), severity, true);
+            checkPasswordFailureAlert(user, ipAddress);
             return failure(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Username/email or password is incorrect.");
         }
 
@@ -456,12 +459,57 @@ public class LoginService {
         return name.substring(0, Math.min(100, name.length()));
     }
 
+    private void checkPasswordFailureAlert(UserRecord user, String ipAddress) {
+        // authenticate() locks the account row before checking the password, serializing
+        // the rolling count and cooldown even when multiple app instances handle logins.
+        Long attempts = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*) FROM audit_logs
+                WHERE user_id = ? AND action_type = 'LOGIN_FAILURE'
+                  AND context->>'reason' = 'PASSWORD_MISMATCH'
+                  AND timestamp > statement_timestamp() - INTERVAL '15 minutes'
+                """, Long.class, user.id());
+        if (attempts == null || attempts < 3) {
+            return;
+        }
+        int created = jdbcTemplate.update("""
+                INSERT INTO security_events (user_id, event_type, severity, risk_score,
+                    anomaly_detected, ip_address, alert_title, detection_reason, timestamp)
+                SELECT ?, 'ACCOUNT_PASSWORD_FAILURE_ALERT', 'HIGH', 60, TRUE, ?,
+                    'Repeated account password failures',
+                    'At least three incorrect passwords for this account within 15 minutes.',
+                    statement_timestamp()
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM security_events
+                    WHERE user_id = ? AND event_type = 'ACCOUNT_PASSWORD_FAILURE_ALERT'
+                      AND timestamp > statement_timestamp() - INTERVAL '15 minutes'
+                )
+                """, user.id(), safeIp(ipAddress), user.id());
+        if (created == 1 && emailChallengeSender != null
+                && TransactionSynchronizationManager.isSynchronizationActive()) {
+            Instant alertTime = Instant.now();
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    emailChallengeSender.queuePasswordFailureAlert(user.email(), attempts, alertTime);
+                }
+            });
+        }
+    }
+
     private void recordLoginFailure(UUID userId, String ipAddress, int riskScore, String severity) {
+        recordLoginFailure(userId, ipAddress, riskScore, severity, false);
+    }
+
+    private void recordLoginFailure(UUID userId, String ipAddress, int riskScore, String severity,
+                                    boolean passwordMismatch) {
         String ip = safeIp(ipAddress);
         jdbcTemplate.update(
-                "INSERT INTO audit_logs (user_id, action_type, status, ip_address, details) "
-                        + "VALUES (?, 'LOGIN_FAILURE', 'FAILURE', ?, 'Sign in rejected')",
-                userId, ip);
+                """
+                INSERT INTO audit_logs (user_id, action_type, status, ip_address, details, context, timestamp)
+                VALUES (?, 'LOGIN_FAILURE', 'FAILURE', ?, 'Sign in rejected',
+                    CASE WHEN ? THEN '{"reason":"PASSWORD_MISMATCH"}'::jsonb ELSE '{}'::jsonb END,
+                    statement_timestamp())
+                """, userId, ip, passwordMismatch);
         jdbcTemplate.update(
                 "INSERT INTO security_events (user_id, event_type, severity, risk_score, anomaly_detected, ip_address, "
                         + "alert_title, detection_reason) VALUES (?, 'FAILED_LOGIN', ?, ?, ?, ?, 'Failed sign-in', "

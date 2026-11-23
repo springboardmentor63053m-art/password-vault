@@ -1,0 +1,12 @@
+services:
+  backend:
+    environment:
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: "587"
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:?Set your Gmail address in the private SMTP file}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:?Set your Gmail App Password in the private SMTP file}
+      SECUREVAULT_MAIL_FROM: ${SPRING_MAIL_USERNAME:?Set your Gmail address in the private SMTP file}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: "true"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_CHECKSERVERIDENTITY: "true"

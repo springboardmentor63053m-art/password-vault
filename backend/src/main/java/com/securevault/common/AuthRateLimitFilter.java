@@ -39,6 +39,8 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     private static final int MAX_BODY_BYTES = 8192;
     private final Map<String, Integer> loginAttempts = new HashMap<>();
     private final Map<String, Integer> registerAttempts = new HashMap<>();
+    private final Map<String, Integer> externalAttempts = new HashMap<>();
+    private final Semaphore externalInFlight = new Semaphore(4);
     private final Semaphore inFlight = new Semaphore(16);
     private final LongSupplier nanoTime;
     private final ClientIpResolver clientIpResolver;
@@ -68,11 +70,12 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         if (now - windowStart >= WINDOW_NANOS) {
             loginAttempts.clear();
             registerAttempts.clear();
+            externalAttempts.clear();
             windowStart = now;
         }
 
         boolean isRegister = uri.contains("/registration");
-        Map<String, Integer> map = isRegister ? registerAttempts : loginAttempts;
+        Map<String, Integer> map = isExternalShare(uri) ? externalAttempts : isRegister ? registerAttempts : loginAttempts;
         int maxAllowed = isRegister ? 15 : 30;
 
         int count = map.getOrDefault(remoteAddress, 0);
@@ -81,6 +84,10 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         }
         map.put(remoteAddress, count + 1);
         return true;
+    }
+
+    private static boolean isExternalShare(String uri) {
+        return uri.startsWith("/api/external-shares/") || uri.equals("/api/account/shares/external");
     }
 
     @Override
@@ -92,13 +99,14 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
         String uri = request.getRequestURI();
         boolean authRequest = "/api/login".equals(uri) || "/api/login/mfa".equals(uri)
-                || "/api/registration/register".equals(uri);
+                || "/api/registration/register".equals(uri) || isExternalShare(uri);
         if (!"POST".equals(request.getMethod()) || !authRequest) {
             chain.doFilter(request, response);
             return;
         }
 
-        if (!allow(clientIpResolver.resolve(request), uri) || !inFlight.tryAcquire()) {
+        Semaphore permits = isExternalShare(uri) ? externalInFlight : inFlight;
+        if (!allow(clientIpResolver.resolve(request), uri) || !permits.tryAcquire()) {
             response.setHeader("Retry-After", "60");
             error(response, 429, "RATE_LIMITED", "Too many requests. Try again later.");
             return;
@@ -134,7 +142,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
 
             chain.doFilter(new BoundedBodyRequest(request, body), response);
         } finally {
-            inFlight.release();
+            permits.release();
         }
     }
 

@@ -20,7 +20,6 @@ export default function Register({ onRegisterSuccess, onNavigateLogin }) {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    role: 'ROLE_USER',
     password: '',
     confirmPassword: '',
     masterKeyNotice: true,
@@ -167,7 +166,7 @@ export default function Register({ onRegisterSuccess, onNavigateLogin }) {
         </aside>
 
         {/* Right Registration Form */}
-        <main className="auth-form-panel">
+        <div className="auth-form-panel">
           <div className="form-content-area">
             <header className="form-header">
               <h1 className="form-heading">Create an Account</h1>
@@ -220,24 +219,6 @@ export default function Register({ onRegisterSuccess, onNavigateLogin }) {
                   />
                 </div>
                 {errors.email && <span className="field-error">{errors.email}</span>}
-              </div>
-
-              <div className="input-field-group">
-                <label htmlFor="reg-role">System Role (RBAC)</label>
-                <div className="input-wrapper">
-                  <i className="fa-solid fa-shield-cat input-icon"></i>
-                  <select
-                    id="reg-role"
-                    name="role"
-                    value={formData.role}
-                    onChange={handleChange}
-                    className="select-input"
-                  >
-                    <option value="ROLE_USER">Individual Vault User (ROLE_USER)</option>
-                    <option value="ROLE_TEAM_MEMBER">Team Collaborator (ROLE_TEAM_MEMBER)</option>
-                    <option value="ROLE_ADMIN">Vault Administrator (ROLE_ADMIN)</option>
-                  </select>
-                </div>
               </div>
 
               <div className="input-field-group">
@@ -349,7 +330,7 @@ export default function Register({ onRegisterSuccess, onNavigateLogin }) {
               </p>
             </footer>
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );

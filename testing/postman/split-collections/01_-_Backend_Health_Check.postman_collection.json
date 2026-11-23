@@ -1,0 +1,319 @@
+﻿{
+    "info":  {
+                 "name":  "SecureVault - 01 - Backend Health Check",
+                 "description":  "Source-mapped manual API lab for the existing 3-mangal backend. All writes, email sends and credential reads require armed_request equal to their TC ID and consume that setting once. Mail-sending cases require verified Mailpit mode. See POSTMAN_TEST_GUIDE.md. No live test has been executed by importing this file.",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+             },
+    "item":  [
+                 {
+                     "name":  "01 - Backend Health Check",
+                     "item":  [
+                                  {
+                                      "name":  "TC001 Backend and database health [READ]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     },
+                                                                     {
+                                                                         "key":  "User-Agent",
+                                                                         "value":  "SecureVault-Postman-Lab/1.0"
+                                                                     },
+                                                                     {
+                                                                         "key":  "X-SecureVault-Device",
+                                                                         "value":  "{{device_id}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{base_url}}/api/health",
+                                                      "description":  "TC001 · Expected HTTP 200. Authentication: none.\n\nBackend SELECT checks users table. 503/DOWN indicates an environment failure, not a pass.\n\nExecution: select this one request and set armed_request=TC001 (not required for this read). \n\n",
+                                                      "auth":  {
+                                                                   "type":  "noauth"
+                                                               }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "prerequest",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "const spec = {\"folder\":0,\"id\":\"TC001\",\"name\":\"Backend and database health\",\"method\":\"GET\",\"path\":\"/api/health\",\"status\":[200],\"auth\":\"none\",\"shape\":\"health\",\"note\":\"Backend SELECT checks users table. 503/DOWN indicates an environment failure, not a pass.\",\"requestName\":\"TC001 Backend and database health [READ]\"};",
+                                                                                    "const get = key =\u003e pm.environment.get(key);",
+                                                                                    "const stop = () =\u003e pm.execution.skipRequest();",
+                                                                                    "const text = value =\u003e typeof value === \"string\" ? value : String(value || \"\");",
+                                                                                    "const synthetic = value =\u003e /^svpm_[A-Za-z0-9_.-]+$/.test(text(value));",
+                                                                                    "if (pm.variables.replaceIn(\"{{base_url}}\") !== \"http://127.0.0.1:18080\") stop();",
+                                                                                    "const required = [];",
+                                                                                    "for (const key of required) {",
+                                                                                    "  const value = key === \"future_expiry\" ? pm.variables.get(key) : get(key);",
+                                                                                    "  if (value === undefined || value === null || text(value) === \"\") stop();",
+                                                                                    "}",
+                                                                                    "const needsArming = spec.method !== \"GET\" || spec.secret === true;",
+                                                                                    "if (needsArming) {",
+                                                                                    "  if (get(\"armed_request\") !== spec.id) stop();",
+                                                                                    "  pm.environment.set(\"armed_request\", \"\");",
+                                                                                    "}",
+                                                                                    "if (spec.mail \u0026\u0026 get(\"smtp_mode_verified\") !== \"MAILPIT\") stop();",
+                                                                                    "if (spec.fixture \u0026\u0026 (!synthetic(get(\"test_username\")) || !synthetic(get(\"test_recipient\")))) stop();",
+                                                                                    "for (const email of [\"test_email\",\"recipient_email\",\"external_recipient\",\"external_revoke_recipient\",\"external_expiry_recipient\"]) {",
+                                                                                    "  if (spec.mail || spec.fixture) {",
+                                                                                    "    if (!text(get(email)).endsWith(\"@example.test\")) stop();",
+                                                                                    "  }",
+                                                                                    "}",
+                                                                                    "if (spec.auth === \"user\" \u0026\u0026 !get(\"user_token\")) stop();",
+                                                                                    "if (spec.auth === \"recipient\" \u0026\u0026 !get(\"recipient_token\")) stop();",
+                                                                                    "if (spec.auth === \"user\" \u0026\u0026 spec.identityRole !== \"user\") {",
+                                                                                    "  if (!synthetic(get(\"test_username\")) || !get(\"user_token\") || get(\"verified_user_token\") !== get(\"user_token\")) stop();",
+                                                                                    "}",
+                                                                                    "if (spec.auth === \"recipient\" \u0026\u0026 spec.identityRole !== \"recipient\") {",
+                                                                                    "  if (!synthetic(get(\"test_recipient\")) || !get(\"recipient_token\") || get(\"verified_recipient_token\") !== get(\"recipient_token\")) stop();",
+                                                                                    "}",
+                                                                                    "if (spec.auth === \"admin\" \u0026\u0026 !get(\"admin_token\")) stop();",
+                                                                                    "if (spec.regularOnly \u0026\u0026 get(\"user_is_regular\") !== \"true\") stop();",
+                                                                                    "if (spec.owned \u0026\u0026 spec.auth !== \"user\" \u0026\u0026 spec.auth !== \"recipient\") stop();",
+                                                                                    "if (required.includes(\"credential_id\") \u0026\u0026 get(\"credential_id\") !== get(\"owned_credential_id\")) stop();",
+                                                                                    "if (required.includes(\"share_id\") \u0026\u0026 get(\"share_id\") !== get(\"owned_share_id\")) stop();",
+                                                                                    "if (required.includes(\"recipient_id\") \u0026\u0026 get(\"recipient_id\") !== get(\"synthetic_recipient_id\")) stop();",
+                                                                                    "if (required.includes(\"user_id\") \u0026\u0026 get(\"user_id\") !== get(\"synthetic_user_id\")) stop();",
+                                                                                    "if (spec.adminChange) {",
+                                                                                    "  if (get(\"allow_admin_changes\") !== \"true\" || !get(\"synthetic_recipient_id\") || !synthetic(get(\"test_recipient\"))) stop();",
+                                                                                    "}",
+                                                                                    "if (spec.eventChange \u0026\u0026 (!get(\"event_id\") || get(\"event_id\") !== get(\"verified_event_id\"))) stop();",
+                                                                                    "if (spec.sensitive \u0026\u0026 get(\"allow_sensitive_account_changes\") !== \"true\") stop();",
+                                                                                    "if (spec.network \u0026\u0026 get(\"allow_breach_lookup\") !== \"true\") stop();",
+                                                                                    "if (spec.totpOnly \u0026\u0026 get(\"totp_enabled\") !== \"true\") stop();",
+                                                                                    "if (spec.expiredOnly \u0026\u0026 !(Date.parse(get(\"external_expires_at\")) \u003c= Date.now())) stop();",
+                                                                                    "if (spec.badPassword) {",
+                                                                                    "  if (get(\"bad_password_attempted\") === \"true\" || get(\"wrong_password\") === get(\"test_password\")) stop();",
+                                                                                    "  pm.environment.set(\"bad_password_attempted\", \"true\");",
+                                                                                    "}",
+                                                                                    "if (spec.badOtp) {",
+                                                                                    "  if (!/^[0-9]{6}$/.test(text(get(\"wrong_otp\"))) || get(\"wrong_otp\") === get(\"otp\") || get(\"bad_otp_attempted\") === \"true\") stop();",
+                                                                                    "  pm.environment.set(\"bad_otp_attempted\", \"true\");",
+                                                                                    "}",
+                                                                                    "if (required.includes(\"session_id\") \u0026\u0026 !JSON.parse(get(\"approved_session_ids\") || \"[]\").includes(get(\"session_id\"))) stop();",
+                                                                                    "if (required.includes(\"device_id_to_revoke\") \u0026\u0026 !JSON.parse(get(\"approved_device_ids\") || \"[]\").includes(get(\"device_id_to_revoke\"))) stop();",
+                                                                                    "if (required.includes(\"recipient_device_id\") \u0026\u0026 !JSON.parse(get(\"approved_recipient_device_ids\") || \"[]\").includes(get(\"recipient_device_id\"))) stop();",
+                                                                                    "if (spec.loginRole \u0026\u0026 spec.path === \"/api/login\") {",
+                                                                                    "  pm.environment.set(spec.loginRole + \"_token\", \"\");",
+                                                                                    "  pm.environment.set(spec.loginRole === \"user\" ? \"mfa_challenge\" : spec.loginRole + \"_mfa_challenge\", \"\");",
+                                                                                    "  if (spec.loginRole !== \"admin\") pm.environment.set(\"verified_\" + spec.loginRole + \"_token\", \"\");",
+                                                                                    "}",
+                                                                                    "const template = null;",
+                                                                                    "function expand(value) {",
+                                                                                    "  if (typeof value === \"string\") return value.replace(/\\{\\{(\\w+)\\}\\}/g, (_, key) =\u003e text(key === \"future_expiry\" ? pm.variables.get(key) : get(key)));",
+                                                                                    "  if (Array.isArray(value)) return value.map(expand);",
+                                                                                    "  if (value \u0026\u0026 typeof value === \"object\") return Object.fromEntries(Object.entries(value).map(([key, item]) =\u003e [key, expand(item)]));",
+                                                                                    "  return value;",
+                                                                                    "}",
+                                                                                    "if (template !== null) pm.variables.set(\"sv_request_body\", JSON.stringify(expand(template)));",
+                                                                                    ""
+                                                                                ]
+                                                                   }
+                                                    },
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "const expected = [200];",
+                                                                                    "pm.test(\"TC001 expected HTTP \"+expected.join(\" or \"), () =\u003e pm.expect(expected.includes(pm.response.code)).to.equal(true));",
+                                                                                    "if (expected.includes(pm.response.code)) {",
+                                                                                    "  const j = pm.response.code === 204 ? null : pm.response.json();",
+                                                                                    "  pm.test(\"Backend and database are UP\", () =\u003e { pm.expect(j.status === \"UP\" \u0026\u0026 j.service === \"securevault-backend\").to.equal(true); });",
+                                                                                    "",
+                                                                                    "const forbidden = new Set([\"password\",\"passwordHash\",\"password_hash\",\"secret\",\"mfaSecret\",\"mfa_secret\",\"mfa_pending_secret\",\"encryptionKey\",\"encrypted_data\",\"encryption_iv\",\"accessToken\",\"session_token\",\"sessionToken\",\"token_hash\",\"otp_hash\",\"grant_hash\",\"grant\",\"otp\"]);",
+                                                                                    "function clean(value) {",
+                                                                                    "  if (Array.isArray(value)) return value.every(clean);",
+                                                                                    "  if (value \u0026\u0026 typeof value === \"object\") return Object.entries(value).every(([key,item]) =\u003e !(forbidden.has(key) \u0026\u0026 item != null \u0026\u0026 item !== \"\") \u0026\u0026 clean(item));",
+                                                                                    "  return true;",
+                                                                                    "}",
+                                                                                    "pm.test(\"Metadata/error response exposes no secret values\", () =\u003e pm.expect(clean(j)).to.equal(true));",
+                                                                                    "}",
+                                                                                    ""
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ],
+                                      "response":  [
+
+                                                   ]
+                                  },
+                                  {
+                                      "name":  "TC002 Login health alias [READ]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Accept",
+                                                                         "value":  "application/json"
+                                                                     },
+                                                                     {
+                                                                         "key":  "User-Agent",
+                                                                         "value":  "SecureVault-Postman-Lab/1.0"
+                                                                     },
+                                                                     {
+                                                                         "key":  "X-SecureVault-Device",
+                                                                         "value":  "{{device_id}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{base_url}}/api/login/health",
+                                                      "description":  "TC002 · Expected HTTP 200. Authentication: none.\n\n\n\nExecution: select this one request and set armed_request=TC002 (not required for this read). \n\n",
+                                                      "auth":  {
+                                                                   "type":  "noauth"
+                                                               }
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "prerequest",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "const spec = {\"folder\":0,\"id\":\"TC002\",\"name\":\"Login health alias\",\"method\":\"GET\",\"path\":\"/api/login/health\",\"status\":[200],\"auth\":\"none\",\"shape\":\"health\",\"requestName\":\"TC002 Login health alias [READ]\"};",
+                                                                                    "const get = key =\u003e pm.environment.get(key);",
+                                                                                    "const stop = () =\u003e pm.execution.skipRequest();",
+                                                                                    "const text = value =\u003e typeof value === \"string\" ? value : String(value || \"\");",
+                                                                                    "const synthetic = value =\u003e /^svpm_[A-Za-z0-9_.-]+$/.test(text(value));",
+                                                                                    "if (pm.variables.replaceIn(\"{{base_url}}\") !== \"http://127.0.0.1:18080\") stop();",
+                                                                                    "const required = [];",
+                                                                                    "for (const key of required) {",
+                                                                                    "  const value = key === \"future_expiry\" ? pm.variables.get(key) : get(key);",
+                                                                                    "  if (value === undefined || value === null || text(value) === \"\") stop();",
+                                                                                    "}",
+                                                                                    "const needsArming = spec.method !== \"GET\" || spec.secret === true;",
+                                                                                    "if (needsArming) {",
+                                                                                    "  if (get(\"armed_request\") !== spec.id) stop();",
+                                                                                    "  pm.environment.set(\"armed_request\", \"\");",
+                                                                                    "}",
+                                                                                    "if (spec.mail \u0026\u0026 get(\"smtp_mode_verified\") !== \"MAILPIT\") stop();",
+                                                                                    "if (spec.fixture \u0026\u0026 (!synthetic(get(\"test_username\")) || !synthetic(get(\"test_recipient\")))) stop();",
+                                                                                    "for (const email of [\"test_email\",\"recipient_email\",\"external_recipient\",\"external_revoke_recipient\",\"external_expiry_recipient\"]) {",
+                                                                                    "  if (spec.mail || spec.fixture) {",
+                                                                                    "    if (!text(get(email)).endsWith(\"@example.test\")) stop();",
+                                                                                    "  }",
+                                                                                    "}",
+                                                                                    "if (spec.auth === \"user\" \u0026\u0026 !get(\"user_token\")) stop();",
+                                                                                    "if (spec.auth === \"recipient\" \u0026\u0026 !get(\"recipient_token\")) stop();",
+                                                                                    "if (spec.auth === \"user\" \u0026\u0026 spec.identityRole !== \"user\") {",
+                                                                                    "  if (!synthetic(get(\"test_username\")) || !get(\"user_token\") || get(\"verified_user_token\") !== get(\"user_token\")) stop();",
+                                                                                    "}",
+                                                                                    "if (spec.auth === \"recipient\" \u0026\u0026 spec.identityRole !== \"recipient\") {",
+                                                                                    "  if (!synthetic(get(\"test_recipient\")) || !get(\"recipient_token\") || get(\"verified_recipient_token\") !== get(\"recipient_token\")) stop();",
+                                                                                    "}",
+                                                                                    "if (spec.auth === \"admin\" \u0026\u0026 !get(\"admin_token\")) stop();",
+                                                                                    "if (spec.regularOnly \u0026\u0026 get(\"user_is_regular\") !== \"true\") stop();",
+                                                                                    "if (spec.owned \u0026\u0026 spec.auth !== \"user\" \u0026\u0026 spec.auth !== \"recipient\") stop();",
+                                                                                    "if (required.includes(\"credential_id\") \u0026\u0026 get(\"credential_id\") !== get(\"owned_credential_id\")) stop();",
+                                                                                    "if (required.includes(\"share_id\") \u0026\u0026 get(\"share_id\") !== get(\"owned_share_id\")) stop();",
+                                                                                    "if (required.includes(\"recipient_id\") \u0026\u0026 get(\"recipient_id\") !== get(\"synthetic_recipient_id\")) stop();",
+                                                                                    "if (required.includes(\"user_id\") \u0026\u0026 get(\"user_id\") !== get(\"synthetic_user_id\")) stop();",
+                                                                                    "if (spec.adminChange) {",
+                                                                                    "  if (get(\"allow_admin_changes\") !== \"true\" || !get(\"synthetic_recipient_id\") || !synthetic(get(\"test_recipient\"))) stop();",
+                                                                                    "}",
+                                                                                    "if (spec.eventChange \u0026\u0026 (!get(\"event_id\") || get(\"event_id\") !== get(\"verified_event_id\"))) stop();",
+                                                                                    "if (spec.sensitive \u0026\u0026 get(\"allow_sensitive_account_changes\") !== \"true\") stop();",
+                                                                                    "if (spec.network \u0026\u0026 get(\"allow_breach_lookup\") !== \"true\") stop();",
+                                                                                    "if (spec.totpOnly \u0026\u0026 get(\"totp_enabled\") !== \"true\") stop();",
+                                                                                    "if (spec.expiredOnly \u0026\u0026 !(Date.parse(get(\"external_expires_at\")) \u003c= Date.now())) stop();",
+                                                                                    "if (spec.badPassword) {",
+                                                                                    "  if (get(\"bad_password_attempted\") === \"true\" || get(\"wrong_password\") === get(\"test_password\")) stop();",
+                                                                                    "  pm.environment.set(\"bad_password_attempted\", \"true\");",
+                                                                                    "}",
+                                                                                    "if (spec.badOtp) {",
+                                                                                    "  if (!/^[0-9]{6}$/.test(text(get(\"wrong_otp\"))) || get(\"wrong_otp\") === get(\"otp\") || get(\"bad_otp_attempted\") === \"true\") stop();",
+                                                                                    "  pm.environment.set(\"bad_otp_attempted\", \"true\");",
+                                                                                    "}",
+                                                                                    "if (required.includes(\"session_id\") \u0026\u0026 !JSON.parse(get(\"approved_session_ids\") || \"[]\").includes(get(\"session_id\"))) stop();",
+                                                                                    "if (required.includes(\"device_id_to_revoke\") \u0026\u0026 !JSON.parse(get(\"approved_device_ids\") || \"[]\").includes(get(\"device_id_to_revoke\"))) stop();",
+                                                                                    "if (required.includes(\"recipient_device_id\") \u0026\u0026 !JSON.parse(get(\"approved_recipient_device_ids\") || \"[]\").includes(get(\"recipient_device_id\"))) stop();",
+                                                                                    "if (spec.loginRole \u0026\u0026 spec.path === \"/api/login\") {",
+                                                                                    "  pm.environment.set(spec.loginRole + \"_token\", \"\");",
+                                                                                    "  pm.environment.set(spec.loginRole === \"user\" ? \"mfa_challenge\" : spec.loginRole + \"_mfa_challenge\", \"\");",
+                                                                                    "  if (spec.loginRole !== \"admin\") pm.environment.set(\"verified_\" + spec.loginRole + \"_token\", \"\");",
+                                                                                    "}",
+                                                                                    "const template = null;",
+                                                                                    "function expand(value) {",
+                                                                                    "  if (typeof value === \"string\") return value.replace(/\\{\\{(\\w+)\\}\\}/g, (_, key) =\u003e text(key === \"future_expiry\" ? pm.variables.get(key) : get(key)));",
+                                                                                    "  if (Array.isArray(value)) return value.map(expand);",
+                                                                                    "  if (value \u0026\u0026 typeof value === \"object\") return Object.fromEntries(Object.entries(value).map(([key, item]) =\u003e [key, expand(item)]));",
+                                                                                    "  return value;",
+                                                                                    "}",
+                                                                                    "if (template !== null) pm.variables.set(\"sv_request_body\", JSON.stringify(expand(template)));",
+                                                                                    ""
+                                                                                ]
+                                                                   }
+                                                    },
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "const expected = [200];",
+                                                                                    "pm.test(\"TC002 expected HTTP \"+expected.join(\" or \"), () =\u003e pm.expect(expected.includes(pm.response.code)).to.equal(true));",
+                                                                                    "if (expected.includes(pm.response.code)) {",
+                                                                                    "  const j = pm.response.code === 204 ? null : pm.response.json();",
+                                                                                    "  pm.test(\"Backend and database are UP\", () =\u003e { pm.expect(j.status === \"UP\" \u0026\u0026 j.service === \"securevault-backend\").to.equal(true); });",
+                                                                                    "",
+                                                                                    "const forbidden = new Set([\"password\",\"passwordHash\",\"password_hash\",\"secret\",\"mfaSecret\",\"mfa_secret\",\"mfa_pending_secret\",\"encryptionKey\",\"encrypted_data\",\"encryption_iv\",\"accessToken\",\"session_token\",\"sessionToken\",\"token_hash\",\"otp_hash\",\"grant_hash\",\"grant\",\"otp\"]);",
+                                                                                    "function clean(value) {",
+                                                                                    "  if (Array.isArray(value)) return value.every(clean);",
+                                                                                    "  if (value \u0026\u0026 typeof value === \"object\") return Object.entries(value).every(([key,item]) =\u003e !(forbidden.has(key) \u0026\u0026 item != null \u0026\u0026 item !== \"\") \u0026\u0026 clean(item));",
+                                                                                    "  return true;",
+                                                                                    "}",
+                                                                                    "pm.test(\"Metadata/error response exposes no secret values\", () =\u003e pm.expect(clean(j)).to.equal(true));",
+                                                                                    "}",
+                                                                                    ""
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ],
+                                      "response":  [
+
+                                                   ]
+                                  }
+                              ]
+                 }
+             ],
+    "auth":  {
+                 "type":  "noauth"
+             },
+    "event":  [
+                  {
+                      "listen":  "prerequest",
+                      "script":  {
+                                     "type":  "text/javascript",
+                                     "exec":  [
+                                                  "if (!pm.environment || pm.environment.name !== \"SecureVault Local — Private Test Values\") {",
+                                                  "  pm.execution.skipRequest();",
+                                                  "}",
+                                                  "if (pm.environment.get(\"base_url\") !== \"http://127.0.0.1:18080\") {",
+                                                  "  pm.execution.skipRequest();",
+                                                  "}",
+                                                  "function initialize(key, value) {",
+                                                  "  if (!pm.environment.get(key)) pm.environment.set(key, value);",
+                                                  "}",
+                                                  "initialize(\"run_id\", pm.variables.replaceIn(\"{{$guid}}\").replace(/-/g, \"\").slice(0, 12));",
+                                                  "const run = pm.environment.get(\"run_id\");",
+                                                  "initialize(\"test_username\", \"svpm_owner_\" + run);",
+                                                  "initialize(\"test_recipient\", \"svpm_recipient_\" + run);",
+                                                  "initialize(\"test_email\", pm.environment.get(\"test_username\") + \"@example.test\");",
+                                                  "initialize(\"recipient_email\", pm.environment.get(\"test_recipient\") + \"@example.test\");",
+                                                  "initialize(\"external_recipient\", \"svpm_external_\" + run + \"@example.test\");",
+                                                  "initialize(\"external_revoke_recipient\", \"svpm_revoke_\" + run + \"@example.test\");",
+                                                  "initialize(\"external_expiry_recipient\", \"svpm_expiry_\" + run + \"@example.test\");",
+                                                  "for (const key of [\"test_password\", \"recipient_password\", \"new_test_password\", \"vault_password\", \"wrong_password\"]) {",
+                                                  "  initialize(key, \"SvPm!\" + pm.variables.replaceIn(\"{{$guid}}\"));",
+                                                  "}",
+                                                  "initialize(\"device_id\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                                                  "initialize(\"unknown_uuid\", pm.variables.replaceIn(\"{{$guid}}\"));",
+                                                  "initialize(\"unknown_username\", \"svpm_missing_\" + pm.variables.replaceIn(\"{{$guid}}\").slice(0, 8));",
+                                                  "initialize(\"invalid_external_token\", (",
+                                                  "  pm.variables.replaceIn(\"{{$guid}}\") + pm.variables.replaceIn(\"{{$guid}}\")",
+                                                  ").replace(/-/g, \"\").slice(0, 43));",
+                                                  "pm.variables.set(\"future_expiry\", new Date(Date.now() + 60 * 60 * 1000).toISOString());"
+                                              ]
+                                 }
+                  }
+              ]
+}

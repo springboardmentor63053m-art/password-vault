@@ -2,14 +2,13 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: securevault-postgres
     restart: always
     environment:
       POSTGRES_DB: securevault_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting Compose}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${SECUREVAULT_DB_PORT:-25432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -35,12 +34,12 @@ services:
     command:
       - >-
         psql -h postgres -U postgres -d securevault_db -v ON_ERROR_STOP=1 -f /bootstrap/app-user.sql;
-        psql -h postgres -U postgres -d securevault_db -v ON_ERROR_STOP=1 -f /bootstrap/schema.sql
+        psql -h postgres -U postgres -d securevault_db -v ON_ERROR_STOP=1 -f /bootstrap/schema.sql;
+        psql -h postgres -U postgres -d securevault_db -v ON_ERROR_STOP=1 -f /bootstrap/app-user.sql
 
   # Unified Spring Boot Backend Service (Auth, Admin Dashboard API & Vault foundations)
   backend:
     build: ./backend
-    container_name: securevault-backend
     restart: unless-stopped
     read_only: true
     cap_drop:
@@ -55,7 +54,8 @@ services:
       SPRING_DATASOURCE_USERNAME: securevault_app
       SPRING_DATASOURCE_PASSWORD: ${SECUREVAULT_DB_APP_PASSWORD:?Set SECUREVAULT_DB_APP_PASSWORD before starting Compose}
       JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:?Set JWT_SECRET_BASE64 before starting Compose}
-      MFA_ENCRYPTION_KEY_BASE64: ${MFA_ENCRYPTION_KEY_BASE64:-${JWT_SECRET_BASE64:?Set JWT_SECRET_BASE64 before starting Compose}}
+      MFA_ENCRYPTION_KEY_BASE64: ${MFA_ENCRYPTION_KEY_BASE64:?Set a distinct MFA_ENCRYPTION_KEY_BASE64}
+      VAULT_ENCRYPTION_KEY_BASE64: ${VAULT_ENCRYPTION_KEY_BASE64:?Set a distinct VAULT_ENCRYPTION_KEY_BASE64}
       JWT_EXPIRATION_SECONDS: ${JWT_EXPIRATION_SECONDS:-900}
       SECUREVAULT_FAILED_LOGIN_THRESHOLD: ${SECUREVAULT_FAILED_LOGIN_THRESHOLD:-4}
       SECUREVAULT_FAILED_LOGIN_WINDOW_MINUTES: ${SECUREVAULT_FAILED_LOGIN_WINDOW_MINUTES:-5}
@@ -66,9 +66,12 @@ services:
       SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:-true}
       SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:-true}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED:-false}
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_CHECKSERVERIDENTITY: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_CHECKSERVERIDENTITY:-true}
+      SECUREVAULT_EXTERNAL_BASE_URL: ${SECUREVAULT_EXTERNAL_BASE_URL:-}
       SECUREVAULT_MAIL_FROM: ${SECUREVAULT_MAIL_FROM:-}
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${SECUREVAULT_API_PORT:-28080}:8080"
     depends_on:
       db-bootstrap:
         condition: service_completed_successfully
@@ -77,10 +80,9 @@ services:
   redis:
     profiles: ["tools"]
     image: redis:7-alpine
-    container_name: securevault-redis
     restart: always
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:26379:6379"
     volumes:
       - redis_data:/data
 
@@ -88,13 +90,12 @@ services:
   pgadmin:
     profiles: ["tools"]
     image: dpage/pgadmin4:latest
-    container_name: securevault-pgadmin
     restart: always
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.invalid}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-}
     ports:
-      - "127.0.0.1:5050:80"
+      - "127.0.0.1:25050:80"
     depends_on:
       - postgres
 

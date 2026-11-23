@@ -182,7 +182,12 @@ export const getStoredAuth = () => {
   }
 };
 
-export const logoutUser = () => {
+export const logoutUser = async () => {
+  const token = getStoredAuth()?.token;
   sessionStorage.removeItem('securevault_jwt');
   sessionStorage.removeItem('securevault_user');
+  if (token) {
+    await fetch('/api/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+      .catch(() => {});
+  }
 };

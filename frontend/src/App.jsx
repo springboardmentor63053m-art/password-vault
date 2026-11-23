@@ -1,87 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import Login from './components/Login';
 import Register from './components/Register';
-import VaultDashboard from './components/VaultDashboard';
+import UserDashboard from './components/UserDashboard';
 import AdminDashboard from './admin/AdminDashboard';
 import { getStoredAuth, logoutUser } from './services/api';
-import { checkIsAdmin, clearAdminSession } from './admin/adminApi';
+import { clearAdminSession, readStoredAdminToken } from './admin/adminApi';
 import './App.css';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [activeView, setActiveView] = useState('login'); // 'login' | 'register' | 'vault' | 'admin'
+  const [currentUser, setCurrentUser] = useState(() =>
+    readStoredAdminToken() ? null : getStoredAuth()?.user ?? null);
+  const [activeView, setActiveView] = useState(() =>
+    readStoredAdminToken() ? 'admin' : currentUser ? 'vault' : 'login');
 
-  useEffect(() => {
-    const auth = getStoredAuth();
-    if (auth && auth.user) {
-      setCurrentUser(auth.user);
-      setActiveView('vault');
-      checkIsAdmin().then((admin) => {
-        setIsAdmin(Boolean(admin));
-      }).catch(() => {
-        setIsAdmin(false);
-      });
-    }
-  }, []);
-
-  const handleLoginSuccess = async (user) => {
+  function handleLoginSuccess(user) {
     setCurrentUser(user);
-    const admin = await checkIsAdmin().catch(() => false);
-    setIsAdmin(Boolean(admin));
     setActiveView('vault');
-  };
+  }
 
-  const handleRegisterSuccess = () => {
-    setActiveView('login');
-  };
-
-  const handleLogout = () => {
-    logoutUser();
+  function handleUserLogout() {
+    void logoutUser();
     clearAdminSession();
     setCurrentUser(null);
-    setIsAdmin(false);
     setActiveView('login');
-  };
+  }
+
+  if (activeView === 'admin') {
+    return <AdminDashboard onNavigateToUserLogin={() => {
+      clearAdminSession();
+      setActiveView('login');
+    }} />;
+  }
+
+  if (activeView === 'vault' && currentUser) {
+    return <UserDashboard currentUser={currentUser} onLogout={handleUserLogout} />;
+  }
 
   return (
     <div className="app-container">
-      <Navbar
-        activeView={activeView}
-        setActiveView={setActiveView}
-        currentUser={currentUser}
-        isAdmin={isAdmin}
-        onLogout={handleLogout}
-      />
-
-      <main className={`main-content ${activeView === 'admin' ? 'admin-view' : ''}`}>
-        {activeView === 'login' && (
-          <Login
-            onLoginSuccess={handleLoginSuccess}
-            onNavigateRegister={() => setActiveView('register')}
-            onNavigateAdmin={() => setActiveView('admin')}
-          />
-        )}
-
-        {activeView === 'register' && (
-          <Register
-            onRegisterSuccess={handleRegisterSuccess}
-            onNavigateLogin={() => setActiveView('login')}
-          />
-        )}
-
-        {activeView === 'vault' && (
-          <VaultDashboard currentUser={currentUser} onLogout={handleLogout} />
-        )}
-
-        {activeView === 'admin' && (
-          <AdminDashboard
-            currentUser={currentUser}
-            onNavigateToVault={() => setActiveView(currentUser ? 'vault' : 'login')}
-            onSignedOut={handleLogout}
-          />
-        )}
+      <Navbar activeView={activeView} setActiveView={setActiveView} />
+      <main className="main-content">
+        {activeView === 'register'
+          ? <Register onRegisterSuccess={() => setActiveView('login')} onNavigateLogin={() => setActiveView('login')} />
+          : <Login onLoginSuccess={handleLoginSuccess} onNavigateRegister={() => setActiveView('register')} />}
       </main>
     </div>
   );

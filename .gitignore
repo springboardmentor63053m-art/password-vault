@@ -1,31 +1,45 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-
-# testing
-/coverage
-
-# production
-/build
-/dist
-/frontend/dist
-/backend/target
-/auth-services/*/target
-/.tools
-
-# misc
-.DS_Store
-.env.local
+# Private configuration
 .env
 .env.*
 !.env.example
-.env.development.local
-.env.test.local
-.env.production.local
-
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+*.env
+!*.env.example
+*.local.yml
+!compose.local.yml
+config/private/
+# Dependencies and generated outputs
+**/node_modules/
+**/target/
+**/dist/
+**/build/
+**/coverage/
+**/.vite/
+**/.vite-temp/
+.pnp.*
+# Local tools, caches and logs
+.tools/
+.idea/
+.vscode/
+__pycache__/
+*.log
+*.tmp
+*.temp
+*.swp
+.DS_Store
+Thumbs.db
+# Backups, archives and keys
+backups/
+*.dump
+*.backup
+*.bak
+*.sql.gz
+*.zip
+*.7z
+*.tar
+*.tgz
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore

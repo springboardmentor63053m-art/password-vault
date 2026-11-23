@@ -1,0 +1,9 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #090f1d; font-family: system-ui, sans-serif; }
+.external-access { width: min(100% - 2rem, 38rem); margin: clamp(2rem, 10vh, 6rem) auto; }
+.external-access h1 { margin: .25rem 0 0; font-size: clamp(1.45rem, 5vw, 2rem); }
+.external-access .sv-feedback { margin-top: .75rem; }
+.external-steps, .external-steps form { display: grid; gap: .75rem; margin-top: 1rem; }
+.external-steps > button, .external-steps form button { justify-self: start; }
+.external-access .external-security-note { margin-top: 1rem; }
+.external-access .sv-password-actions { margin-top: .75rem; }
